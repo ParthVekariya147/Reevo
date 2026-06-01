@@ -34,11 +34,17 @@ type Sub = {
 };
 type AuditEntry = { id: string; action: string; actor_email: string | null; meta: Record<string, unknown> | null; created_at: string };
 type BizDetail = {
-  id: string; name: string; owner_email: string; plan: Plan;
+  id: string; name: string; owner_id: string; owner_email: string; plan: Plan;
   plan_expires_at: string | null;
   suspended_at: string | null; suspended_reason: string | null;
   google_link: string | null; created_at: string; scans_30d: number;
   qr_codes: QRCode[]; subscription: Sub | null; audit_logs: AuditEntry[];
+  is_demo: boolean;
+  demo_max_scans:       number | null;
+  demo_max_reviews:     number | null;
+  demo_expires_at:      string | null;
+  demo_current_scans:   number;
+  demo_current_reviews: number;
 };
 
 type TabId = 'overview' | 'campaigns' | 'subscription' | 'audit';
@@ -55,6 +61,8 @@ export default function BusinessDetailPage({ params }: { params: Promise<{ id: s
   const [planModalOpen, setPlanModalOpen] = useState(false);
   const [newPlan, setNewPlan]             = useState<Plan | ''>('');
   const [newExpiry, setNewExpiry]         = useState(''); // ISO date string YYYY-MM-DD or ''
+  const [convertingDemo, setConvertingDemo] = useState(false);
+  const [convertOpen, setConvertOpen]       = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -120,6 +128,26 @@ export default function BusinessDetailPage({ params }: { params: Promise<{ id: s
       toast.error('Network error. Please try again.');
     } finally {
       setPlanChanging(false);
+    }
+  }
+
+  async function handleConvertDemo() {
+    if (!biz) return;
+    setConvertingDemo(true);
+    try {
+      const res  = await fetch(`/api/admin/demo/${id}/convert`, { method: 'POST' });
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data.error ?? 'Failed to convert account');
+        return;
+      }
+      toast.success('Account converted to full access');
+      setConvertOpen(false);
+      load();
+    } catch {
+      toast.error('Network error. Please try again.');
+    } finally {
+      setConvertingDemo(false);
     }
   }
 
@@ -242,6 +270,76 @@ export default function BusinessDetailPage({ params }: { params: Promise<{ id: s
                   <StatCard label="Scans (30d)"         value={biz.scans_30d.toLocaleString()} hero/>
                   <StatCard label="Plan"                value={biz.subscription?.plan?.toUpperCase() ?? biz.plan.toUpperCase()}/>
                 </div>
+
+                {biz.is_demo && (() => {
+                  const demoExpired = biz.demo_expires_at && new Date(biz.demo_expires_at) < new Date();
+                  const scanPct  = biz.demo_max_scans   ? Math.min(100, (biz.demo_current_scans   / biz.demo_max_scans)   * 100) : 0;
+                  const revPct   = biz.demo_max_reviews ? Math.min(100, (biz.demo_current_reviews / biz.demo_max_reviews) * 100) : 0;
+                  const barColor = (pct: number) => pct >= 100 ? '#EF4444' : 'var(--accent)';
+                  return (
+                    <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', padding: '20px 24px', marginTop: 4 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+                        <div style={{ fontSize: 13, fontWeight: 600 }}>Demo Account</div>
+                        <span style={{
+                          fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 4,
+                          background: demoExpired ? '#FEE2E2' : '#DCFCE7',
+                          color:      demoExpired ? '#991B1B' : '#15803D',
+                        }}>
+                          {demoExpired ? 'Expired' : 'Active'}
+                        </span>
+                      </div>
+
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 16, marginBottom: 14 }}>
+                        <div>
+                          <div style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 4 }}>Scans used / max</div>
+                          <div style={{ fontSize: 15, fontWeight: 700 }}>
+                            {biz.demo_current_scans.toLocaleString()}
+                            <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--muted)', marginLeft: 4 }}>
+                              / {biz.demo_max_scans?.toLocaleString() ?? '∞'}
+                            </span>
+                          </div>
+                          {biz.demo_max_scans && (
+                            <div style={{ marginTop: 5, height: 4, background: 'var(--border)', borderRadius: 2, overflow: 'hidden' }}>
+                              <div style={{ height: '100%', background: barColor(scanPct), borderRadius: 2, width: `${scanPct}%`, transition: 'width 0.3s' }}/>
+                            </div>
+                          )}
+                        </div>
+                        <div>
+                          <div style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 4 }}>Reviews used / max</div>
+                          <div style={{ fontSize: 15, fontWeight: 700 }}>
+                            {biz.demo_current_reviews.toLocaleString()}
+                            <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--muted)', marginLeft: 4 }}>
+                              / {biz.demo_max_reviews?.toLocaleString() ?? '∞'}
+                            </span>
+                          </div>
+                          {biz.demo_max_reviews && (
+                            <div style={{ marginTop: 5, height: 4, background: 'var(--border)', borderRadius: 2, overflow: 'hidden' }}>
+                              <div style={{ height: '100%', background: barColor(revPct), borderRadius: 2, width: `${revPct}%`, transition: 'width 0.3s' }}/>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 14 }}>
+                        Expires: <strong style={{ color: 'var(--ink-2)' }}>{biz.demo_expires_at ? fmtDate(biz.demo_expires_at) : 'Never'}</strong>
+                      </div>
+
+                      <button
+                        onClick={() => setConvertOpen(true)}
+                        disabled={convertingDemo}
+                        style={{
+                          padding: '7px 14px', borderRadius: 'var(--radius-sm)',
+                          border: '1px solid var(--accent)', background: 'transparent',
+                          color: 'var(--accent)', fontSize: 12, fontWeight: 600,
+                          cursor: convertingDemo ? 'wait' : 'pointer',
+                          opacity: convertingDemo ? 0.6 : 1,
+                        }}
+                      >
+                        {convertingDemo ? 'Converting…' : 'Convert to Full Account'}
+                      </button>
+                    </div>
+                  );
+                })()}
               </div>
             )}
 
@@ -362,6 +460,17 @@ export default function BusinessDetailPage({ params }: { params: Promise<{ id: s
         loading={suspending}
         onConfirm={handleSuspend}
         onCancel={() => setSuspendOpen(false)}
+      />
+
+      <ConfirmActionModal
+        open={convertOpen}
+        title={`Convert ${biz?.name ?? ''} to Full Account?`}
+        description="This will permanently convert this demo account to a full account. Demo limits will be removed. This cannot be undone."
+        confirmLabel="Convert to Full Account"
+        dangerous={false}
+        loading={convertingDemo}
+        onConfirm={handleConvertDemo}
+        onCancel={() => { if (!convertingDemo) setConvertOpen(false); }}
       />
 
       {/* ── Plan management modal ── */}

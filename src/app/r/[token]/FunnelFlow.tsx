@@ -117,6 +117,12 @@ async function fetchDrafts(token: string, rating: number): Promise<Draft[]> {
     body:    JSON.stringify({ token, rating }),
   });
   if (res.status === 402) throw new Error('LIMIT_REACHED');
+  if (res.status === 403) {
+    const json: { demo_limit_reached?: boolean; reason?: string; message?: string } =
+      await res.json().catch(() => ({}));
+    if (json.demo_limit_reached) throw new Error(`DEMO_LIMIT:${json.reason ?? ''}:${json.message ?? ''}`);
+    throw new Error(`Generation failed: ${res.status}`);
+  }
   if (!res.ok) throw new Error(`Generation failed: ${res.status}`);
   const json = await res.json();
   const arr = Array.isArray(json.drafts) ? json.drafts : [];
@@ -177,10 +183,12 @@ export default function FunnelFlow({
   business,
   token,
   valid,
+  demoLimit,
 }: {
   business: BusinessData | null;
   token: string;
   valid: boolean;
+  demoLimit?: { reached: boolean; reason?: 'scan_limit' | 'review_limit' | 'expired' } | null;
 }) {
   const [step, setStep]       = useState<Step>('landing');
   const [rating, setRating]   = useState(0);
@@ -197,7 +205,8 @@ export default function FunnelFlow({
   const [feedbackError, setFeedbackError] = useState('');
   const [submitting, setSubmitting]     = useState(false);
   const [submitted, setSubmitted]       = useState(false);
-  const [visible, setVisible]       = useState(true);
+  const [visible, setVisible]           = useState(true);
+  const [runtimeDemoLimit, setRuntimeDemoLimit] = useState<{ reason: string } | null>(null);
 
   const currentDraft = drafts[draftIdx] ?? null;
   const reviewText   = editing ? editedText : (currentDraft?.text ?? '');
@@ -214,6 +223,9 @@ export default function FunnelFlow({
     playful: { bg: '#FFF6E8', fg: '#3F2E1B', sub: '#92745A', divider: '#F0DFC0', card: 'rgba(255,255,255,0.7)',     btnBg: brand, btnFg: '#fff', font: 'system-ui, sans-serif' },
   };
   const sv = styleMap[business?.funnelStyle ?? 'elegant'] ?? styleMap.elegant;
+
+  const showDemoLimit = demoLimit?.reached || runtimeDemoLimit !== null;
+  const demoReason    = demoLimit?.reason ?? runtimeDemoLimit?.reason ?? '';
 
   // Resolve active platforms; fall back to googleLink for old records
   const activePlatforms = (business?.reviewPlatforms ?? []).filter(p => p.enabled && p.url.trim());
@@ -259,7 +271,13 @@ export default function FunnelFlow({
         track('generate');
         goTo('review');
       } catch (err) {
-        const isLimit = err instanceof Error && err.message === 'LIMIT_REACHED';
+        const msg = err instanceof Error ? err.message : '';
+        if (msg.startsWith('DEMO_LIMIT:')) {
+          const [, reason] = msg.split(':');
+          setRuntimeDemoLimit({ reason: reason ?? '' });
+          return;
+        }
+        const isLimit = msg === 'LIMIT_REACHED';
         setGenError(
           isLimit
             ? 'This business has reached its monthly review limit. Please try again later.'
@@ -386,6 +404,72 @@ export default function FunnelFlow({
           <h2>Link not found</h2>
           <p>This QR code link is invalid or has expired. Please ask the business for an updated code.</p>
         </div>
+      </div>
+    );
+  }
+
+  /* ── Demo limit reached ──────────────────────────────── */
+
+  const DEMO_SUBTEXT: Record<string, string> = {
+    scan_limit:   "You've reached the scan limit for this demo.",
+    review_limit: "You've collected enough reviews for this demo.",
+    expired:      'This demo QR code has expired.',
+  };
+
+  if (showDemoLimit) {
+    return (
+      <div
+        className="rv-funnel-root"
+        style={{ '--rv-brand': brand, background: sv.bg, fontFamily: sv.font } as React.CSSProperties}
+      >
+        <div className="rv-funnel-card" style={{ background: sv.card }}>
+          <div className="rv-funnel-header">
+            <div className="rv-funnel-logo" style={{ background: brand, overflow: 'hidden', padding: business.logoUrl ? 0 : undefined }}>
+              {business.logoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={business.logoUrl} alt={business.name} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+              ) : business.logoInitials}
+            </div>
+            <div>
+              <p className="rv-funnel-biz-name" style={{ color: sv.fg }}>{business.name}</p>
+              {business.tagline && <p className="rv-funnel-tagline" style={{ color: sv.sub }}>{business.tagline}</p>}
+            </div>
+          </div>
+          <div className="rv-divider" style={{ margin: '16px 28px 0', background: sv.divider }}/>
+          <div className="rv-funnel-body">
+            <div className="rv-success">
+              <div className="rv-success-icon" style={{ background: 'rgba(110,91,255,0.12)' }}>
+                <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+                  <rect x="10" y="14" width="12" height="10" rx="2" stroke={brand} strokeWidth="2"/>
+                  <path d="M12 14v-3a4 4 0 018 0v3" stroke={brand} strokeWidth="2" strokeLinecap="round"/>
+                </svg>
+              </div>
+              <p className="rv-success-title" style={{ color: sv.fg }}>Your demo has ended</p>
+              <p className="rv-success-sub" style={{ color: sv.sub }}>
+                {DEMO_SUBTEXT[demoReason] ?? 'This demo has ended.'}
+              </p>
+              <p style={{ fontSize: 14, color: sv.sub, textAlign: 'center', marginTop: 4, marginBottom: 20 }}>
+                Ready to collect unlimited reviews? Get started with Reevo.
+              </p>
+              <a
+                href="/signup"
+                className="rv-btn rv-btn-primary"
+                style={{ background: sv.btnBg, color: sv.btnFg, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+              >
+                Get Started
+              </a>
+              <a
+                href="/contact"
+                style={{ color: sv.sub, fontSize: 13, textAlign: 'center', display: 'block', marginTop: 14, textDecoration: 'none' }}
+              >
+                Questions? Contact us
+              </a>
+            </div>
+          </div>
+        </div>
+        <p className="rv-poweredby">
+          Powered by <a href="/" target="_blank" rel="noopener">Reevo</a>
+        </p>
       </div>
     );
   }

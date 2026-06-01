@@ -18,6 +18,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     .select(`
       id, owner_id, name, tagline, google_link, brand_color, logo_initials,
       plan, plan_expires_at, suspended_at, suspended_reason, created_at, updated_at,
+      is_demo, demo_max_scans, demo_max_reviews, demo_expires_at,
       subscriptions (id, plan, status, current_period_end, cancel_at_end, provider, provider_id,
         invoices (id, amount_cents, currency, status, provider_inv_id, pdf_url, created_at)
       ),
@@ -54,6 +55,18 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     .order('created_at', { ascending: false })
     .limit(50);
 
+  // Demo usage counts — all-time totals, only fetched when is_demo is true
+  let demoCurrentScans   = 0;
+  let demoCurrentReviews = 0;
+  if ((business as { is_demo?: boolean }).is_demo && qrIds.length > 0) {
+    const [{ count: totalScans }, { count: totalReviews }] = await Promise.all([
+      db.from('qr_scans').select('id', { count: 'exact', head: true }).in('qr_id', qrIds),
+      db.from('generated_reviews').select('id', { count: 'exact', head: true }).eq('business_id', id),
+    ]);
+    demoCurrentScans   = totalScans   ?? 0;
+    demoCurrentReviews = totalReviews ?? 0;
+  }
+
   const sub = Array.isArray(business.subscriptions)
     ? (business.subscriptions[0] ?? null)
     : (business.subscriptions ?? null);
@@ -64,11 +77,13 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
   return NextResponse.json({
     ...business,
-    owner_email:  authUser?.user?.email ?? '',
-    subscription: sub,
-    qr_codes:     qrCodesWithScans,
-    scans_30d:    scans30d ?? 0,
-    audit_logs:   auditLogs ?? [],
+    owner_email:          authUser?.user?.email ?? '',
+    subscription:         sub,
+    qr_codes:             qrCodesWithScans,
+    scans_30d:            scans30d ?? 0,
+    audit_logs:           auditLogs ?? [],
+    demo_current_scans:   demoCurrentScans,
+    demo_current_reviews: demoCurrentReviews,
   });
 }
 

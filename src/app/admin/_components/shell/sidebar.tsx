@@ -6,18 +6,19 @@ import { usePathname } from 'next/navigation';
 import {
   MdDashboard, MdBusiness, MdCreditCard, MdBarChart,
   MdShield, MdArticle, MdSettings, MdLogout, MdChevronLeft, MdChevronRight,
-  MdReceipt, MdLocalOffer,
+  MdReceipt, MdLocalOffer, MdGroup,
 } from 'react-icons/md';
 
 const NAV = [
-  { id: 'dashboard',     href: '/admin/dashboard',                    label: 'Dashboard',     Icon: MdDashboard,  sub: false },
-  { id: 'businesses',    href: '/admin/businesses',                   label: 'Businesses',    Icon: MdBusiness,   sub: false },
-  { id: 'subscriptions', href: '/admin/subscriptions',               label: 'Subscriptions', Icon: MdCreditCard, sub: false },
-  { id: 'invoices',      href: '/admin/subscriptions/invoices',       label: 'Invoices',      Icon: MdReceipt,    sub: true  },
-  { id: 'plans',         href: '/admin/subscriptions/plans',          label: 'Plan Config',   Icon: MdLocalOffer, sub: true  },
-  { id: 'analytics',    href: '/admin/analytics',                    label: 'Analytics',     Icon: MdBarChart,   sub: false },
-  { id: 'abuse',        href: '/admin/analytics/abuse',              label: 'Abuse',         Icon: MdShield,     sub: true  },
-  { id: 'audit',        href: '/admin/analytics/audit-logs',         label: 'Audit Logs',    Icon: MdArticle,    sub: true  },
+  { id: 'dashboard',     href: '/admin/dashboard',              label: 'Dashboard',     Icon: MdDashboard,  sub: false, roles: undefined },
+  { id: 'businesses',    href: '/admin/businesses',             label: 'Businesses',    Icon: MdBusiness,   sub: false, roles: undefined },
+  { id: 'demo',          href: '/admin/demo',                   label: 'Demo Accounts', Icon: MdGroup,      sub: true,  roles: ['admin', 'super_admin'] },
+  { id: 'subscriptions', href: '/admin/subscriptions',          label: 'Subscriptions', Icon: MdCreditCard, sub: false, roles: undefined },
+  { id: 'invoices',      href: '/admin/subscriptions/invoices', label: 'Invoices',      Icon: MdReceipt,    sub: true,  roles: undefined },
+  { id: 'plans',         href: '/admin/subscriptions/plans',    label: 'Plan Config',   Icon: MdLocalOffer, sub: true,  roles: undefined },
+  { id: 'analytics',    href: '/admin/analytics',               label: 'Analytics',     Icon: MdBarChart,   sub: false, roles: undefined },
+  { id: 'abuse',        href: '/admin/analytics/abuse',         label: 'Abuse',         Icon: MdShield,     sub: true,  roles: undefined },
+  { id: 'audit',        href: '/admin/analytics/audit-logs',    label: 'Audit Logs',    Icon: MdArticle,    sub: true,  roles: undefined },
 ];
 
 const SETTINGS = { id: 'settings', href: '/admin/settings', label: 'Settings', Icon: MdSettings };
@@ -164,7 +165,7 @@ export default function AdminSidebar({ adminEmail = '', adminRole = 'admin', mob
 
       {/* Nav */}
       <nav style={{ flex: 1, padding: '12px 8px', display: 'flex', flexDirection: 'column', gap: 2, overflowY: 'auto' }}>
-        {NAV.map(({ id, href, label, Icon, sub }) => {
+        {NAV.filter(item => !item.roles || item.roles.includes(adminRole)).map(({ id, href, label, Icon, sub }) => {
           const active = isActive(href);
           return (
             <Link key={id} href={href} onClick={onClose} style={{

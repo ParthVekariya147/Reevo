@@ -4,6 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { generateReview, ReviewLength } from '@/lib/ai/generate';
 import { rateLimit, getClientIp } from '@/lib/security/rateLimit';
 import { getPlanLimits } from '@/lib/billing/plans';
+import { checkDemoLimits } from '@/lib/demo/limits';
 import type { ReviewPlatformEntry } from '@/lib/platforms';
 
 /* POST /api/funnel/generate
@@ -67,6 +68,24 @@ export async function POST(req: NextRequest) {
     plan_expires_at: string | null;
     review_length_preference: string[] | null;
   };
+
+  /* Enforce demo limits — short-circuit before any AI or billing work */
+  const demoCheck = await checkDemoLimits(qr.business_id);
+  if (!demoCheck.allowed) {
+    const DEMO_MESSAGES: Record<string, string> = {
+      scan_limit:   "You've reached the scan limit for this demo.",
+      review_limit: "You've collected enough reviews for this demo.",
+      expired:      'This demo QR code has expired.',
+    };
+    return NextResponse.json(
+      {
+        demo_limit_reached: true,
+        reason:  demoCheck.reason,
+        message: DEMO_MESSAGES[demoCheck.reason ?? ''] ?? 'Demo limit reached.',
+      },
+      { status: 403 },
+    );
+  }
 
   /* Enforce billing quota — count reviews generated in rolling 30-day window */
   const db = createAdminClient();
@@ -140,6 +159,13 @@ export async function POST(req: NextRequest) {
     .select('id, ai_text');
 
   if (dbError || !saved?.length) {
+    // DB-level trigger fires when demo review cap is hit atomically
+    if (dbError?.message?.includes('demo_review_limit_exceeded')) {
+      return NextResponse.json(
+        { demo_limit_reached: true, reason: 'review_limit', message: "You've collected enough reviews for this demo." },
+        { status: 403 },
+      );
+    }
     console.error('[funnel/generate] DB error:', dbError);
     console.error('[funnel/generate] Insert payload:', JSON.stringify(inserts));
     // Expose actual DB error in development so it is visible in the browser
