@@ -191,6 +191,7 @@ export default function FunnelFlow({
   const [editedText, setEditedText] = useState('');
   const [copied, setCopied]         = useState(false);
   const [copiedReviewId, setCopiedReviewId] = useState<string | null>(null);
+  const [manualCopy, setManualCopy] = useState(false);
   const [genError, setGenError]         = useState('');
   const [privateFb, setPrivateFb]       = useState('');
   const [feedbackError, setFeedbackError] = useState('');
@@ -275,6 +276,7 @@ export default function FunnelFlow({
   function handleRefresh() {
     setCopied(false);
     setCopiedReviewId(null);
+    setManualCopy(false);
     setEditing(false);
     const next = drafts.length > 1 ? (draftIdx + 1) % drafts.length : draftIdx;
     setDraftIdx(next);
@@ -282,15 +284,50 @@ export default function FunnelFlow({
     track('refresh', { draft_index: next });
   }
 
-  /* Single-platform: copy + open URL + go to success in one click.
-     Multi-platform: copy + show platform selector (user must choose).
-     window.open must fire BEFORE the first await or pop-up blockers will kill it. */
-  async function handleCopyAndGo(singlePlatform?: { id: string; url: string }) {
-    // Open tab synchronously inside the click event, before any await
+  /* Copy text to clipboard synchronously inside the gesture event.
+     PRIMARY : navigator.clipboard.writeText — called without await so the
+               browser gesture context is NOT broken (iOS Safari requirement).
+     FALLBACK: execCommand('copy') — synchronous, covers older / restricted browsers.
+     LAST RESORT: sets manualCopy=true so user can long-press to copy. */
+  function handleCopyAndGo(singlePlatform?: { id: string; url: string }) {
+    // ── 1. Clipboard write — FIRST, synchronously inside gesture ──────
+    let copyOk = false;
+
+    if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+      // Fire-and-forget: no await — keeps gesture context alive on iOS Safari.
+      // If the write rejects async (permission denied), undo the optimistic state
+      // and surface the manual fallback instead of leaving clipboard silently empty.
+      navigator.clipboard.writeText(reviewText).catch(() => {
+        setManualCopy(true);
+        setCopied(false);
+      });
+      copyOk = true;
+    }
+
+    if (!copyOk) {
+      // Synchronous legacy fallback (works on Android WebView, older Safari)
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = reviewText;
+        ta.style.cssText = 'position:fixed;top:0;left:0;width:1px;height:1px;opacity:0;pointer-events:none;';
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        copyOk = document.execCommand('copy');
+        document.body.removeChild(ta);
+      } catch { /* ignored */ }
+    }
+
+    // ── 2. Last resort: show manual copy UI ───────────────────────────
+    if (!copyOk) {
+      setManualCopy(true);
+      return;
+    }
+
+    // ── 3. Open platform URL — still inside gesture, popup-blocker safe ─
     if (singlePlatform?.url) window.open(singlePlatform.url, '_blank');
 
-    try { await navigator.clipboard.writeText(reviewText); } catch {}
-
+    // ── 4. Analytics (fire-and-forget, not gesture-sensitive) ──────────
     track('copy', { draft_index: draftIdx });
     if (reviewId) void updateReviewStatus(token, reviewId, 'copy');
 
@@ -299,7 +336,7 @@ export default function FunnelFlow({
       if (reviewId) void updateReviewStatus(token, reviewId, 'redirect', singlePlatform.id);
       goTo('success');
     } else {
-      // Multi-platform: lock in the review ID at copy time, then show platform picker
+      // Multi-platform: lock in review ID at copy time, then show platform picker
       setCopiedReviewId(reviewId);
       setCopied(true);
     }
@@ -472,10 +509,30 @@ export default function FunnelFlow({
                 </button>
               </div>
 
+              {/* Manual copy fallback — shown when both clipboard methods fail */}
+              {manualCopy && (
+                <div style={{ marginTop: 12, padding: '14px 16px', background: 'rgba(0,0,0,0.05)', borderRadius: 12, textAlign: 'center' }}>
+                  <p style={{ fontSize: 12, color: sv.sub, marginBottom: 8 }}>
+                    Tap and hold the text below, then select &quot;Copy&quot;:
+                  </p>
+                  <textarea
+                    readOnly
+                    value={reviewText}
+                    onFocus={e => e.target.select()}
+                    style={{
+                      width: '100%', minHeight: 80, fontSize: 13, lineHeight: 1.5,
+                      padding: '10px 12px', borderRadius: 8, border: '1px solid rgba(0,0,0,0.15)',
+                      background: '#fff', color: '#111', resize: 'none', boxSizing: 'border-box',
+                      WebkitUserSelect: 'text', userSelect: 'text',
+                    }}
+                  />
+                </div>
+              )}
+
               {/* Copy button:
                   - Single platform → copy + open URL + success (one click)
                   - Multi platform  → copy + show platform selector */}
-              {!copied && (
+              {!copied && !manualCopy && (
                 <button
                   className="rv-btn rv-btn-primary"
                   style={{ background: sv.btnBg, color: sv.btnFg }}
