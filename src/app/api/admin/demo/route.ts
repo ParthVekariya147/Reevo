@@ -4,7 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { writeAuditLog } from '@/lib/admin/audit';
 
 /* GET /api/admin/demo — list all demo accounts */
-export async function GET(_req: NextRequest) {
+export async function GET() {
   const result = await requireAdmin();
   if ('error' in result) return result.error;
   const { ctx } = result;
