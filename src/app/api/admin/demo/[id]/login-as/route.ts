@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin } from '@/lib/admin/auth';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { writeAuditLog } from '@/lib/admin/audit';
+import { env } from '@/lib/env';
 
 /* POST /api/admin/demo/[id]/login-as
    Generates a one-time magic link to sign in as the target user.
@@ -39,10 +40,14 @@ export async function POST(
   if (!targetUser?.user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
   const targetEmail = targetUser.user.email ?? '';
 
-  // Generate magic link
+  // Generate magic link — redirectTo sends the user through the PKCE callback
+  // handler so the session is properly established before landing on dashboard.
   const { data: linkData, error: linkError } = await db.auth.admin.generateLink({
     type:  'magiclink',
     email: targetEmail,
+    options: {
+      redirectTo: `${env.APP_URL}/auth/callback`,
+    },
   });
 
   if (linkError || !linkData) {
