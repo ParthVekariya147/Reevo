@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 
 // vi.mock is hoisted — use vi.hoisted() so TEST_KEY is available inside the factory
 const TEST_KEY = vi.hoisted(() => 'a'.repeat(64));

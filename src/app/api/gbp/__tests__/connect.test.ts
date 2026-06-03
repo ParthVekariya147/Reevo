@@ -75,7 +75,7 @@ describe('GET /api/gbp/connect', () => {
 
   it('returns 404 when user has no business', async () => {
     mockAuth('user-1');
-    vi.mocked(getCurrentBusiness).mockResolvedValue({ business: null, error: null, schema: null });
+    vi.mocked(getCurrentBusiness).mockResolvedValue({ business: null, error: null, schema: 'modern' });
     const res = await GET(makeReq());
     expect(res.status).toBe(404);
   });
@@ -84,7 +84,7 @@ describe('GET /api/gbp/connect', () => {
     mockAuth('user-1');
     vi.mocked(getCurrentBusiness).mockResolvedValue({
       business: { id: 'biz-1', name: 'Test Biz' } as never,
-      error: null, schema: 'current',
+      error: null, schema: 'modern',
     });
 
     const res      = await GET(makeReq());
@@ -103,7 +103,7 @@ describe('GET /api/gbp/connect', () => {
     mockAuth('user-1');
     vi.mocked(getCurrentBusiness).mockResolvedValue({
       business: { id: 'biz-abc', name: 'Test' } as never,
-      error: null, schema: 'current',
+      error: null, schema: 'modern',
     });
 
     await GET(makeReq());
@@ -114,7 +114,7 @@ describe('GET /api/gbp/connect', () => {
     mockAuth('user-1');
     vi.mocked(getCurrentBusiness).mockResolvedValue({
       business: { id: 'biz-1', name: 'Test' } as never,
-      error: null, schema: 'current',
+      error: null, schema: 'modern',
     });
     mockBuildState.mockReturnValue('my-signed-state');
 
@@ -127,7 +127,7 @@ describe('GET /api/gbp/connect', () => {
     mockAuth('user-1');
     vi.mocked(getCurrentBusiness).mockResolvedValue({
       business: { id: 'biz-1', name: 'Test' } as never,
-      error: null, schema: 'current',
+      error: null, schema: 'modern',
     });
 
     await GET(makeReq());
@@ -141,7 +141,7 @@ describe('GET /api/gbp/connect', () => {
     mockAuth('user-1');
     vi.mocked(getCurrentBusiness).mockResolvedValue({
       business: { id: 'biz-1', name: 'Test' } as never,
-      error: null, schema: 'current',
+      error: null, schema: 'modern',
     });
 
     await GET(new NextRequest('http://localhost:3000/api/gbp/connect?next=/app/business_dashboard/onboarding'));
@@ -155,7 +155,7 @@ describe('GET /api/gbp/connect', () => {
     mockAuth('user-1');
     vi.mocked(getCurrentBusiness).mockResolvedValue({
       business: { id: 'biz-1', name: 'Test' } as never,
-      error: null, schema: 'current',
+      error: null, schema: 'modern',
     });
     const { createOAuth2Client } = await import('@/lib/gbp/oauth');
     vi.mocked(createOAuth2Client).mockImplementationOnce(() => {

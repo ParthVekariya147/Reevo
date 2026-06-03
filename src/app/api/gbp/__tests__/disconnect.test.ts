@@ -73,7 +73,7 @@ describe('POST /api/gbp/disconnect', () => {
 
   it('returns 404 when no business found for the user', async () => {
     mockUser('user-1');
-    vi.mocked(getCurrentBusiness).mockResolvedValue({ business: null, error: null, schema: null });
+    vi.mocked(getCurrentBusiness).mockResolvedValue({ business: null, error: null, schema: 'modern' });
     buildDbMock();
     const res = await POST(makeReq());
     expect(res.status).toBe(404);
@@ -84,7 +84,7 @@ describe('POST /api/gbp/disconnect', () => {
     vi.mocked(getCurrentBusiness).mockResolvedValue({
       business: { id: 'biz-1', name: 'Test' } as never,
       error: null,
-      schema: 'current',
+      schema: 'modern',
     });
     const { updateMock, eqFn } = buildDbMock();
 
@@ -107,7 +107,7 @@ describe('POST /api/gbp/disconnect', () => {
     vi.mocked(getCurrentBusiness).mockResolvedValue({
       business: { id: 'biz-1', name: 'Test' } as never,
       error: null,
-      schema: 'current',
+      schema: 'modern',
     });
     const { updateMock, eqFn } = buildDbMock();
 
@@ -128,7 +128,7 @@ describe('POST /api/gbp/disconnect', () => {
     vi.mocked(getCurrentBusiness).mockResolvedValue({
       business: { id: 'biz-1', name: 'My Biz' } as never,
       error: null,
-      schema: 'current',
+      schema: 'modern',
     });
     const { eqFn } = buildDbMock();
 
