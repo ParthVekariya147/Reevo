@@ -20,6 +20,7 @@ const NAV_GROUPS = [
     label: 'Records',
     items: [
       { id: 'history', href: `${BASE}/history`, label: 'Review history', icon: 'history' as const },
+      { id: 'reviews', href: `${BASE}/reviews`, label: 'Reply drafts',   icon: 'msg'     as const },
       { id: 'usage', href: `${BASE}/usage`, label: 'Usage', icon: 'gauge' as const },
       { id: 'notifications', href: `${BASE}/notifications`, label: 'Notifications', icon: 'bell' as const },
     ],

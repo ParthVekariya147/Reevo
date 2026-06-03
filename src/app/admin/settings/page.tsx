@@ -10,6 +10,7 @@ type Settings = {
   maintenance_mode:        string;
   feature_flag_ai_v2:      string;
   feature_flag_new_funnel: string;
+  free_reply_draft_limit:  string;
 };
 
 const DEFAULTS: Settings = {
@@ -18,6 +19,7 @@ const DEFAULTS: Settings = {
   maintenance_mode:        'false',
   feature_flag_ai_v2:      'false',
   feature_flag_new_funnel: 'false',
+  free_reply_draft_limit:  '10',
 };
 
 type Toast = { type: 'success' | 'error'; message: string };
@@ -189,6 +191,20 @@ export default function SettingsPage() {
                   onChange={e => set('support_email', e.target.value)}
                   placeholder="support@example.com"
                   style={inputStyle}
+                />
+              </FieldRow>
+              <FieldRow
+                label="Free reply draft limit"
+                hint="Max AI reply drafts per month for free-plan businesses. Per-business overrides take precedence."
+              >
+                <input
+                  type="number"
+                  min={0}
+                  step={1}
+                  value={settings.free_reply_draft_limit}
+                  onChange={e => set('free_reply_draft_limit', e.target.value)}
+                  placeholder="10"
+                  style={{ ...inputStyle, width: 100 }}
                 />
               </FieldRow>
             </SectionCard>

@@ -12,6 +12,7 @@ const ALLOWED_KEYS = new Set([
   'maintenance_mode',
   'feature_flag_ai_v2',
   'feature_flag_new_funnel',
+  'free_reply_draft_limit',
 ]);
 
 export async function GET() {

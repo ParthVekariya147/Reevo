@@ -40,11 +40,18 @@ type BizDetail = {
   google_link: string | null; created_at: string; scans_30d: number;
   qr_codes: QRCode[]; subscription: Sub | null; audit_logs: AuditEntry[];
   is_demo: boolean;
-  demo_max_scans:       number | null;
-  demo_max_reviews:     number | null;
-  demo_expires_at:      string | null;
-  demo_current_scans:   number;
-  demo_current_reviews: number;
+  demo_max_scans:            number | null;
+  demo_max_reviews:          number | null;
+  demo_expires_at:           string | null;
+  demo_current_scans:        number;
+  demo_current_reviews:      number;
+  reply_draft_limit_override: number | null;
+};
+type ReplyUsage = {
+  draftsThisMonth: number;
+  draftsTotal:     number;
+  effectiveLimit:  number;
+  overrideValue:   number | null;
 };
 
 type TabId = 'overview' | 'campaigns' | 'subscription' | 'audit';
@@ -64,10 +71,23 @@ export default function BusinessDetailPage({ params }: { params: Promise<{ id: s
   const [convertingDemo, setConvertingDemo] = useState(false);
   const [convertOpen, setConvertOpen]       = useState(false);
 
+  // Reply-draft limit override state
+  const [replyUsage,     setReplyUsage]     = useState<ReplyUsage | null>(null);
+  const [overrideInput,  setOverrideInput]  = useState('');
+  const [overrideSaving, setOverrideSaving] = useState(false);
+
   const load = useCallback(async () => {
     setLoading(true);
-    const res = await fetch(`/api/admin/businesses/${id}`);
-    if (res.ok) setBiz(await res.json());
+    const [bizRes, usageRes] = await Promise.all([
+      fetch(`/api/admin/businesses/${id}`),
+      fetch(`/api/admin/businesses/${id}/reply-usage`),
+    ]);
+    if (bizRes.ok) setBiz(await bizRes.json());
+    if (usageRes.ok) {
+      const ru: ReplyUsage = await usageRes.json();
+      setReplyUsage(ru);
+      setOverrideInput(ru.overrideValue !== null ? String(ru.overrideValue) : '');
+    }
     setLoading(false);
   }, [id]);
 
@@ -148,6 +168,35 @@ export default function BusinessDetailPage({ params }: { params: Promise<{ id: s
       toast.error('Network error. Please try again.');
     } finally {
       setConvertingDemo(false);
+    }
+  }
+
+  async function handleOverrideSave(resetToGlobal = false) {
+    if (!biz) return;
+    setOverrideSaving(true);
+    try {
+      const override = resetToGlobal ? null : (overrideInput.trim() === '' ? null : parseInt(overrideInput, 10));
+      if (!resetToGlobal && overrideInput.trim() !== '' && (isNaN(override as number) || (override as number) < 0)) {
+        toast.error('Override must be a non-negative whole number.');
+        return;
+      }
+      const res  = await fetch(`/api/admin/businesses/${id}`, {
+        method:  'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ reply_draft_limit_override: override }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data.error ?? 'Failed to save override');
+        return;
+      }
+      toast.success(resetToGlobal ? 'Override cleared — using global limit' : `Draft limit set to ${override}`);
+      if (resetToGlobal) setOverrideInput('');
+      load();
+    } catch {
+      toast.error('Network error. Please try again.');
+    } finally {
+      setOverrideSaving(false);
     }
   }
 
@@ -269,6 +318,105 @@ export default function BusinessDetailPage({ params }: { params: Promise<{ id: s
                   <StatCard label="Live Campaigns"      value={biz.qr_codes.filter(q => q.status === 'live').length}/>
                   <StatCard label="Scans (30d)"         value={biz.scans_30d.toLocaleString()} hero/>
                   <StatCard label="Plan"                value={biz.subscription?.plan?.toUpperCase() ?? biz.plan.toUpperCase()}/>
+                </div>
+
+                {/* ── Reply drafts block ───────────────────────── */}
+                <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', padding: '20px 24px', marginBottom: 16 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 16 }}>AI Reply Drafts</div>
+
+                  {!replyUsage ? (
+                    <div style={{ fontSize: 13, color: 'var(--muted)' }}>Loading…</div>
+                  ) : (
+                    <>
+                      {/* Usage row */}
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 20 }}>
+                        <div>
+                          <div style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 4 }}>This month</div>
+                          <div style={{ fontSize: 15, fontWeight: 700 }}>
+                            {replyUsage.draftsThisMonth.toLocaleString()}
+                            <span style={{ fontSize: 12, fontWeight: 400, color: 'var(--muted)', marginLeft: 4 }}>
+                              / {replyUsage.effectiveLimit === -1 ? '∞' : replyUsage.effectiveLimit}
+                            </span>
+                          </div>
+                          {replyUsage.effectiveLimit !== -1 && (
+                            <div style={{ marginTop: 5, height: 4, background: 'var(--border)', borderRadius: 2, overflow: 'hidden' }}>
+                              <div style={{
+                                height: '100%', borderRadius: 2,
+                                background: replyUsage.draftsThisMonth >= replyUsage.effectiveLimit ? '#EF4444' : 'var(--accent)',
+                                width: `${Math.min(100, replyUsage.effectiveLimit > 0 ? (replyUsage.draftsThisMonth / replyUsage.effectiveLimit) * 100 : 0)}%`,
+                                transition: 'width 0.3s',
+                              }}/>
+                            </div>
+                          )}
+                        </div>
+                        <div>
+                          <div style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 4 }}>All time</div>
+                          <div style={{ fontSize: 15, fontWeight: 700 }}>{replyUsage.draftsTotal.toLocaleString()}</div>
+                        </div>
+                        <div>
+                          <div style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 4 }}>Active limit</div>
+                          <div style={{ fontSize: 15, fontWeight: 700 }}>
+                            {replyUsage.effectiveLimit === -1 ? 'Unlimited' : replyUsage.effectiveLimit}
+                            {replyUsage.overrideValue !== null && (
+                              <span style={{ fontSize: 11, marginLeft: 6, color: 'var(--accent)', background: 'var(--bg-tint)', padding: '2px 6px', borderRadius: 4 }}>override</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Override control */}
+                      <div style={{ borderTop: '1px solid var(--border)', paddingTop: 16 }}>
+                        <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 10 }}>
+                          Per-business override
+                        </div>
+                        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                          <input
+                            type="number"
+                            min={0}
+                            step={1}
+                            placeholder="e.g. 25"
+                            value={overrideInput}
+                            onChange={e => setOverrideInput(e.target.value)}
+                            style={{
+                              width: 100, padding: '7px 10px', borderRadius: 'var(--radius-sm)',
+                              border: '1px solid var(--border)', background: 'var(--bg-tint)',
+                              color: 'var(--ink)', fontSize: 13, boxSizing: 'border-box' as const,
+                            }}
+                          />
+                          <button
+                            onClick={() => handleOverrideSave(false)}
+                            disabled={overrideSaving}
+                            style={{
+                              padding: '7px 14px', borderRadius: 'var(--radius-sm)',
+                              border: 'none', background: 'var(--accent)', color: '#fff',
+                              fontSize: 12, fontWeight: 600, cursor: overrideSaving ? 'wait' : 'pointer',
+                              opacity: overrideSaving ? 0.6 : 1,
+                            }}
+                          >
+                            {overrideSaving ? 'Saving…' : 'Set override'}
+                          </button>
+                          {replyUsage.overrideValue !== null && (
+                            <button
+                              onClick={() => handleOverrideSave(true)}
+                              disabled={overrideSaving}
+                              style={{
+                                padding: '7px 14px', borderRadius: 'var(--radius-sm)',
+                                border: '1px solid var(--border)', background: 'var(--surface)',
+                                color: 'var(--muted)', fontSize: 12, fontWeight: 500,
+                                cursor: overrideSaving ? 'wait' : 'pointer',
+                              }}
+                            >
+                              Reset to global
+                            </button>
+                          )}
+                        </div>
+                        <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 6 }}>
+                          Leave blank or click &ldquo;Reset to global&rdquo; to use the platform-wide free limit.
+                          Set to <strong>0</strong> to block this business entirely. Set <strong>-1</strong> not accepted — upgrade plan instead.
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </div>
 
                 {biz.is_demo && (() => {

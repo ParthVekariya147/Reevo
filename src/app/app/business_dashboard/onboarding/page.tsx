@@ -3,7 +3,16 @@ import { getCurrentBusiness } from '@/lib/businesses/current';
 import { redirect } from 'next/navigation';
 import ScreenOnboarding from '@/components/dashboard/screens/ScreenOnboarding';
 
-export default async function OnboardingPage() {
+export default async function OnboardingPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ gbp_error?: string }>;
+}) {
+  const sp       = await searchParams;
+  const gbpError = sp.gbp_error
+    ? 'Could not connect Google Business Profile. Please try again.'
+    : null;
+
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
@@ -13,6 +22,19 @@ export default async function OnboardingPage() {
 
   // If onboarding is already complete, redirect to dashboard (handles direct URL access)
   if (biz?.onboarding_complete) redirect('/app/business_dashboard');
+
+  // Check whether this business already has an active GBP connection
+  const gbpConnected = biz
+    ? await supabase
+        .from('gbp_connections')
+        .select('id')
+        .eq('business_id', String(biz.id))
+        .eq('status', 'active')
+        .limit(1)
+        .maybeSingle()
+        .then(({ data }) => !!data)
+    : false;
+
   const existingBusiness = biz ? {
     name:             biz.name as string,
     tagline:          (biz.tagline as string | null) ?? null,
@@ -39,6 +61,8 @@ export default async function OnboardingPage() {
       }}
       existingBusiness={existingBusiness}
       initialStep={Number(biz?.onboarding_step ?? 0)}
+      gbpConnected={gbpConnected}
+      gbpError={gbpError}
     />
   );
 }

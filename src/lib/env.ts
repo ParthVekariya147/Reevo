@@ -48,4 +48,17 @@ export const env = {
   ANTHROPIC_KEY: optional('ANTHROPIC_API_KEY'),
   OPENAI_KEY:    optional('OPENAI_API_KEY'),
   GEMINI_KEY:    optional('GEMINI_API_KEY'),
+
+  // ── Google Business Profile OAuth ─────────────────────────
+  // Required for Automated Google Review Reply feature.
+  // GBP_TOKEN_ENC_KEY must be exactly 64 hex chars (32 bytes) for AES-256-GCM.
+  GBP_OAUTH_CLIENT_ID:     optional('GBP_OAUTH_CLIENT_ID'),
+  GBP_OAUTH_CLIENT_SECRET: optional('GBP_OAUTH_CLIENT_SECRET'),
+  GBP_OAUTH_REDIRECT_URI:  optional('GBP_OAUTH_REDIRECT_URI'),
+  GBP_TOKEN_ENC_KEY:       optional('GBP_TOKEN_ENC_KEY'),
+
+  // ── Cron jobs ─────────────────────────────────────────────
+  // Set the same value in Vercel env vars — Vercel passes it as
+  // Authorization: Bearer <CRON_SECRET> on every cron invocation.
+  CRON_SECRET: optional('CRON_SECRET'),
 } as const;

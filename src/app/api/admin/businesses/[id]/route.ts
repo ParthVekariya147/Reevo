@@ -138,6 +138,21 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     action = 'business.plan_changed';
   }
 
+  if ('reply_draft_limit_override' in body) {
+    if (!can(ctx.adminUser.role, 'business.change_plan')) {
+      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
+    }
+    const val = body.reply_draft_limit_override;
+    if (val !== null && (typeof val !== 'number' || !Number.isInteger(val) || val < 0)) {
+      return NextResponse.json(
+        { error: 'reply_draft_limit_override must be a non-negative integer or null' },
+        { status: 400 },
+      );
+    }
+    updates.reply_draft_limit_override = val;
+    if (!action) action = 'business.reply_draft_override_set';
+  }
+
   if (Object.keys(updates).length === 0) {
     return NextResponse.json({ error: 'Nothing to update' }, { status: 400 });
   }

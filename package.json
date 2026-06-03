@@ -12,6 +12,7 @@
     "test:ui": "vitest --ui",
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
+    "test:gbp": "vitest run src/lib/security/__tests__/encrypt.test.ts src/lib/billing/__tests__/tier.test.ts src/lib/gbp/__tests__/oauth.test.ts src/app/api/gbp/__tests__/connect.test.ts src/app/api/gbp/__tests__/callback.test.ts src/app/api/gbp/__tests__/disconnect.test.ts src/app/api/cron/__tests__/gbp-sync.test.ts",
     "test:seed": "npx tsx e2e/helpers/run-seed.ts",
     "db:types": "supabase gen types typescript --project-id $SUPABASE_PROJECT_ID > src/types/database.gen.ts"
   },
@@ -26,6 +27,8 @@
     "@upstash/ratelimit": "^2.0.8",
     "@upstash/redis": "^1.38.0",
     "clsx": "^2.1.1",
+    "google-auth-library": "^10.6.2",
+    "googleapis": "^173.0.0",
     "lucide-react": "^1.16.0",
     "nanoid": "^5.1.11",
     "next": "^15.5.18",

@@ -97,3 +97,50 @@ export interface Invoice {
   pdf_url:         string | null;
   created_at:      string;
 }
+
+// ── Automated Google Review Reply ─────────────────────────────
+
+export type GbpConnectionStatus = 'active' | 'revoked' | 'error';
+export type ReplyStatus =
+  | 'pending'
+  | 'drafted'
+  | 'awaiting_approval'
+  | 'approved'
+  | 'sent'
+  | 'failed';
+
+export interface GbpConnection {
+  id:                string;
+  business_id:       string;
+  google_account_id: string;
+  location_id:       string;
+  /** AES-256-GCM encrypted blob — never display or log. */
+  refresh_token:     string | null;
+  status:            GbpConnectionStatus;
+  last_synced_at:    string | null;
+  created_at:        string;
+}
+
+export interface GbpReview {
+  id:                string;
+  connection_id:     string;
+  google_review_id:  string;
+  rating:            number | null;
+  comment:           string | null;
+  reviewer_name:     string | null;
+  review_created_at: string | null;
+  reply_text:        string | null;
+  reply_status:      ReplyStatus;
+  replied_at:        string | null;
+  created_at:        string;
+}
+
+export interface ReplySettings {
+  business_id:        string;
+  auto_reply_enabled: boolean;
+  auto_activated:     boolean;
+  admin_force_state:  'on' | 'off' | null;
+  tone:               string;
+  signature:          string | null;
+  language:           string | null;
+}
