@@ -1,8 +1,23 @@
 import { OAuth2Client } from 'google-auth-library';
 import { createHmac, timingSafeEqual } from 'crypto';
 import { env } from '@/lib/env';
+import { decryptToken } from '@/lib/security/encrypt';
 
 export const GBP_SCOPE = 'https://www.googleapis.com/auth/business.manage';
+
+/**
+ * Decrypts a stored refresh token blob and exchanges it for a fresh access token.
+ * Reuses createOAuth2Client() — the single source of Google credential config.
+ * Throws if decryption fails or Google returns no token.
+ */
+export async function refreshAccessToken(encryptedToken: string): Promise<string> {
+  const refreshToken = decryptToken(encryptedToken);
+  const oauth2Client = createOAuth2Client();
+  oauth2Client.setCredentials({ refresh_token: refreshToken });
+  const { token } = await oauth2Client.getAccessToken();
+  if (!token) throw new Error('[gbp] getAccessToken returned null');
+  return token;
+}
 
 /** Returns a configured OAuth2Client, throws if env vars are missing. */
 export function createOAuth2Client(): OAuth2Client {

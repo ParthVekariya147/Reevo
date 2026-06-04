@@ -73,6 +73,16 @@ vi.mock('@/lib/redis', () => ({
   getRedisClient: vi.fn().mockReturnValue(null),
 }));
 
+// Default to live mode so all existing tests exercise the real fetchReviews mock path.
+// Mock-mode behaviour (MOCK_REVIEWS substitution) is tested separately in B2 tests.
+vi.mock('@/lib/gbp/liveFlag', () => ({
+  isGbpLive: vi.fn().mockResolvedValue(true),
+}));
+
+vi.mock('@/lib/gbp/mock', () => ({
+  MOCK_REVIEWS: [],
+}));
+
 // ── Imports after mocks ────────────────────────────────────────
 import { GET }          from '../gbp-sync/route';
 import { encryptToken } from '@/lib/security/encrypt';

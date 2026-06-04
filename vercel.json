@@ -3,6 +3,14 @@
     {
       "path": "/api/cron/gbp-sync",
       "schedule": "0 2 * * *"
+    },
+    {
+      "path": "/api/cron/gbp-generate",
+      "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/cron/gbp-post",
+      "schedule": "0 4 * * *"
     }
   ]
 }

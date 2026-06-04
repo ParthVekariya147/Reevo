@@ -27,30 +27,25 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'No business found' }, { status: 404 });
   }
 
-  const [{ data, error }, { data: draftRows }] = await Promise.all([
+  const sinceIso = new Date(Date.now() - days * 86400_000).toISOString();
+
+  const [{ data, error }, { data: draftData, error: draftError }] = await Promise.all([
     db.rpc('analytics_summary', { p_business_id: businessId, p_days: days }),
-    db
-      .from('analytics_events')
-      .select('meta')
-      .eq('business_id', businessId)
-      .eq('event_type', 'copy')
-      .gte('created_at', new Date(Date.now() - days * 86400_000).toISOString()),
+    // DB-side tally: draft_index extracted from JSONB meta in SQL, no rows in Node
+    db.rpc('analytics_draft_acceptance', { biz_id: businessId, since: sinceIso }),
   ]);
 
   if (error) {
     console.error('[analytics/summary] RPC error:', error);
     return NextResponse.json({ error: 'Failed to load analytics' }, { status: 500 });
   }
-
-  /* Tally draft_index from copy event meta */
-  let firstDraftCopied = 0;
-  let secondDraftCopied = 0;
-  for (const row of draftRows ?? []) {
-    const idx = (row.meta as Record<string, unknown> | null)?.draft_index;
-    if (idx === 0 || idx === '0') firstDraftCopied++;
-    else if (idx === 1 || idx === '1') secondDraftCopied++;
-    else firstDraftCopied++; // legacy events without draft_index count as first
+  if (draftError) {
+    console.error('[analytics/summary] draft_acceptance RPC error:', draftError);
   }
+
+  const draftRow = (draftData as Array<{ first: number; second: number }> | null)?.[0];
+  const firstDraftCopied  = Number(draftRow?.first  ?? 0);
+  const secondDraftCopied = Number(draftRow?.second ?? 0);
 
   return NextResponse.json(
     { ...data, draft_acceptance: { first: firstDraftCopied, second: secondDraftCopied } },

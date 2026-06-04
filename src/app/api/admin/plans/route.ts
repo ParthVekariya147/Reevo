@@ -10,18 +10,19 @@ export async function GET() {
 
   const db = createAdminClient();
 
-  const [pricesRes, busRes] = await Promise.all([
+  const [pricesRes, countsRes] = await Promise.all([
     db.from('plan_prices')
       .select('plan, amount_cents, currency, label, trial_days, review_limit, scan_limit, campaign_limit, is_popular, updated_at')
       .order('amount_cents'),
-    db.from('businesses').select('plan'),
+    // DB-side GROUP BY instead of fetching all businesses into Node
+    db.rpc('admin_business_plan_counts'),
   ]);
 
   if (pricesRes.error) return NextResponse.json({ error: pricesRes.error.message }, { status: 500 });
 
   const counts: Record<string, number> = {};
-  for (const b of busRes.data ?? []) {
-    counts[b.plan] = (counts[b.plan] ?? 0) + 1;
+  for (const row of (countsRes.data ?? []) as { plan: string; count: number }[]) {
+    counts[row.plan] = Number(row.count);
   }
 
   const data = (pricesRes.data ?? []).map(p => ({

@@ -10,6 +10,7 @@ type Settings = {
   maintenance_mode:        string;
   feature_flag_ai_v2:      string;
   feature_flag_new_funnel: string;
+  feature_flag_gbp_live:   string;
   free_reply_draft_limit:  string;
 };
 
@@ -19,6 +20,7 @@ const DEFAULTS: Settings = {
   maintenance_mode:        'false',
   feature_flag_ai_v2:      'false',
   feature_flag_new_funnel: 'false',
+  feature_flag_gbp_live:   'false',
   free_reply_draft_limit:  '10',
 };
 
@@ -222,6 +224,12 @@ export default function SettingsPage() {
                 hint="Rolls out the redesigned funnel flow to all accounts"
                 value={settings.feature_flag_new_funnel === 'true'}
                 onChange={v => set('feature_flag_new_funnel', v ? 'true' : 'false')}
+              />
+              <ToggleRow
+                label="GBP Live API (off = mock mode)"
+                hint="Enable live Google Business Profile API calls. Off = fixture data used for all GBP sync/reply operations."
+                value={settings.feature_flag_gbp_live === 'true'}
+                onChange={v => set('feature_flag_gbp_live', v ? 'true' : 'false')}
               />
             </SectionCard>
 

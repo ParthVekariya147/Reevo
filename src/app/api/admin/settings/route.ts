@@ -12,6 +12,7 @@ const ALLOWED_KEYS = new Set([
   'maintenance_mode',
   'feature_flag_ai_v2',
   'feature_flag_new_funnel',
+  'feature_flag_gbp_live',
   'free_reply_draft_limit',
 ]);
 
