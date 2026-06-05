@@ -6,10 +6,11 @@ const VALID_TONES   = new Set(['friendly', 'professional', 'casual', 'empathetic
 const VALID_LENGTHS = new Set(['short', 'medium', 'long']);
 
 const DEFAULTS = {
-  tone:         'friendly',
-  signature:    null as string | null,
-  language:     null as string | null, // null = inherit from businesses.language
-  reply_length: 'medium',
+  tone:               'friendly',
+  signature:          null as string | null,
+  language:           null as string | null, // null = inherit from businesses.language
+  reply_length:       'medium',
+  auto_reply_enabled: false,
 };
 
 /* GET /api/reviews/reply-settings
@@ -35,7 +36,7 @@ export async function GET() {
 
   const { data, error } = await db
     .from('reply_settings')
-    .select('tone, signature, language, reply_length')
+    .select('tone, signature, language, reply_length, auto_reply_enabled')
     .eq('business_id', biz.id)
     .maybeSingle();
 
@@ -108,6 +109,14 @@ export async function PATCH(req: NextRequest) {
       patch.language = typeof body.language === 'string'
         ? body.language.trim().slice(0, 10) || null
         : null;
+    }
+  }
+
+  if ('auto_reply_enabled' in body) {
+    if (typeof body.auto_reply_enabled !== 'boolean') {
+      errors.push('auto_reply_enabled must be a boolean');
+    } else {
+      patch.auto_reply_enabled = body.auto_reply_enabled;
     }
   }
 

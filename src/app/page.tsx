@@ -2,6 +2,7 @@ import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import HeroSection from "@/components/home/HeroSection";
 import TrustSection from "@/components/home/TrustSection";
+import SupportedPlatforms from "@/components/home/SupportedPlatforms";
 import HowItWorks from "@/components/home/HowItWorks";
 import FeaturesGrid from "@/components/home/FeaturesGrid";
 import AnalyticsShowcase from "@/components/home/AnalyticsShowcase";
@@ -19,6 +20,7 @@ export default function HomePage() {
       <main style={{ flexGrow: 1 }}>
         <HeroSection />
         <TrustSection />
+        <SupportedPlatforms />
         <HowItWorks />
         <FeaturesGrid />
         <AnalyticsShowcase />
