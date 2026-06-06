@@ -1,5 +1,3 @@
-"use client";
-
 import Link from "next/link";
 
 const QRMini = ({ size = 80 }: { size?: number }) => {

@@ -1,3 +1,17 @@
 {
-  "extends": ["next/core-web-vitals", "next/typescript"]
+  "extends": ["next/core-web-vitals", "next/typescript"],
+  "rules": {
+    "@typescript-eslint/no-restricted-imports": [
+      "error",
+      {
+        "paths": [
+          {
+            "name": "react-icons",
+            "message": "Use subpath imports (e.g. 'react-icons/si') to enable tree-shaking. Never import from bare 'react-icons'.",
+            "allowTypeImports": true
+          }
+        ]
+      }
+    ]
+  }
 }

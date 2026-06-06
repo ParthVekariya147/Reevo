@@ -1,8 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import { createClient } from '@/lib/supabase/client';
+import dynamic from 'next/dynamic';
 import { Icon, Card, CardHeader, Btn, Badge, Avatar, Field, Input, Select, Switch, StarRating } from '../ui';
+
+const SecuritySection = dynamic(() => import('./ScreenSettingsSecurity'), {
+  ssr: false,
+  loading: () => <div style={{ height: 200, background: 'var(--surface-2)', borderRadius: 8 }} />,
+});
 
 // ── types ─────────────────────────────────────────────────────
 
@@ -123,17 +128,9 @@ const LANGUAGES = [
 
 // ── main component ────────────────────────────────────────────
 
-type PwdState = 'idle' | 'saving' | 'saved' | 'error';
-
 export default function ScreenSettings({ initialBusiness, user }: Props) {
   const [section,   setSection]   = useState('profile');
   const [saveState, setSaveState] = useState<SaveState>('idle');
-
-  // Password change state
-  const [pwdCurrent, setPwdCurrent] = useState('');
-  const [pwdNew,     setPwdNew]     = useState('');
-  const [pwdState,   setPwdState]   = useState<PwdState>('idle');
-  const [pwdError,   setPwdError]   = useState('');
 
   const [instagramError, setInstagramError] = useState('');
 
@@ -176,34 +173,6 @@ export default function ScreenSettings({ initialBusiness, user }: Props) {
     const ok = await patchBusiness(payload);
     setSaveState(ok ? 'saved' : 'error');
     if (ok) setTimeout(() => setSaveState('idle'), 2500);
-  }
-
-  async function handlePasswordChange() {
-    setPwdError('');
-    if (!pwdCurrent) { setPwdError('Enter your current password.'); return; }
-    if (pwdNew.length < 8) { setPwdError('New password must be at least 8 characters.'); return; }
-    setPwdState('saving');
-    const supabase = createClient();
-    // Verify current password by re-signing in
-    const { error: signInErr } = await supabase.auth.signInWithPassword({
-      email: user.email,
-      password: pwdCurrent,
-    });
-    if (signInErr) {
-      setPwdError('Current password is incorrect.');
-      setPwdState('error');
-      return;
-    }
-    const { error: updateErr } = await supabase.auth.updateUser({ password: pwdNew });
-    if (updateErr) {
-      setPwdError(updateErr.message);
-      setPwdState('error');
-      return;
-    }
-    setPwdState('saved');
-    setPwdCurrent('');
-    setPwdNew('');
-    setTimeout(() => setPwdState('idle'), 3000);
   }
 
   const saveLabel =
@@ -501,48 +470,7 @@ export default function ScreenSettings({ initialBusiness, user }: Props) {
           )}
 
           {section === 'security' && (
-            <>
-              <Card>
-                <CardHeader title="Password" subtitle="Leave blank if you signed up with Google" />
-                <div className="lp-grid lp-grid-2" style={{ gap: 14 }}>
-                  <Field label="Current password">
-                    <Input
-                      type="password"
-                      placeholder="Enter current password"
-                      icon="lock"
-                      value={pwdCurrent}
-                      onChange={e => { setPwdCurrent(e.target.value); setPwdError(''); setPwdState('idle'); }}
-                    />
-                  </Field>
-                  <Field label="New password" hint="At least 8 characters">
-                    <Input
-                      type="password"
-                      placeholder="At least 8 characters"
-                      icon="lock"
-                      value={pwdNew}
-                      onChange={e => { setPwdNew(e.target.value); setPwdError(''); setPwdState('idle'); }}
-                    />
-                  </Field>
-                </div>
-                {pwdError && (
-                  <div style={{ fontSize: 12, color: 'var(--lp-danger, #ef4444)', marginTop: 6 }}>{pwdError}</div>
-                )}
-                <Btn
-                  variant="primary"
-                  icon={pwdState === 'saved' ? 'check' : 'lock'}
-                  onClick={handlePasswordChange}
-                  disabled={pwdState === 'saving'}
-                >
-                  {pwdState === 'saving' ? 'Updating…' : pwdState === 'saved' ? 'Password updated!' : 'Update password'}
-                </Btn>
-              </Card>
-              <Card>
-                <CardHeader title="Two-factor authentication" subtitle="Coming in a future update" />
-                <div style={{ fontSize: 13, color: 'var(--lp-fg-muted)', padding: '8px 0' }}>
-                  Authenticator app and SMS verification will be available soon.
-                </div>
-              </Card>
-            </>
+            <SecuritySection userEmail={user.email} />
           )}
 
           {section === 'api' && (

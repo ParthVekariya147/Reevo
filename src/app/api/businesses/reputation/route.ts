@@ -21,7 +21,8 @@ export async function GET() {
     .from('generated_reviews')
     .select('rating')
     .eq('business_id', business.id)
-    .neq('status', 'private_feedback');
+    .neq('status', 'private_feedback')
+    .limit(10000);
 
   if (error) {
     console.error('[businesses/reputation] DB error:', error);

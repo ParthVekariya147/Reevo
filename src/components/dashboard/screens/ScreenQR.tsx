@@ -5,8 +5,9 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { IconName } from '../ui';
 import {
   Icon, Card, CardHeader, Btn, Badge, Counter,
-  Switch, QRCanvas, fmt,
+  Switch, fmt,
 } from '../ui';
+import { QRCanvas } from '../ui-qr';
 
 const fetcher = (url: string) =>
   fetch(url).then(r => { if (!r.ok) throw new Error('fetch failed'); return r.json(); });

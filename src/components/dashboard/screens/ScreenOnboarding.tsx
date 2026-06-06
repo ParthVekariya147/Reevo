@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
 import { Icon, Badge, Field, Input } from '../ui';
 import { PLATFORM_DEFS, type ReviewPlatformEntry } from '@/lib/platforms';
 import { isValidGoogleReviewUrl } from '@/lib/validation/urls';
@@ -418,8 +417,7 @@ export default function ScreenOnboarding({ user, existingBusiness, initialStep =
   }
 
   async function handleLogout() {
-    const supabase = createClient();
-    await supabase.auth.signOut();
+    await fetch('/auth/signout', { method: 'POST' });
     window.location.href = '/login';
   }
 

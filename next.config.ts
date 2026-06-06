@@ -21,7 +21,7 @@ const securityHeaders = [
       "script-src 'self' 'unsafe-inline'",
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "font-src 'self' https://fonts.gstatic.com",
-      "img-src 'self' data: blob: https://lh3.googleusercontent.com",
+      "img-src 'self' data: blob: https://lh3.googleusercontent.com https://wwowqxlwabtynubsntku.supabase.co",
       "connect-src 'self' https://*.supabase.co wss://*.supabase.co",
       "frame-ancestors 'none'",
     ].join("; "),
@@ -37,6 +37,7 @@ const nextConfig = (phase: string): NextConfig => ({
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "lh3.googleusercontent.com" },
+      { protocol: "https", hostname: "wwowqxlwabtynubsntku.supabase.co" },
     ],
   },
   async headers() {

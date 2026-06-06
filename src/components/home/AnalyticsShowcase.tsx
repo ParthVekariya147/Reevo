@@ -1,6 +1,3 @@
-"use client";
-
-import { useMemo } from "react";
 
 const AreaChart = ({ data }: { data: { x: string; v: number }[] }) => {
   const w = 780, h = 220, p = { l: 36, r: 16, t: 16, b: 28 };
@@ -64,20 +61,21 @@ const BarChart = ({ data }: { data: { x: string; v: number }[] }) => {
   );
 };
 
+const HEATMAP_HOURS = 12;
+const HEATMAP_CELLS = (() => {
+  const arr: number[] = [];
+  for (let d = 0; d < 7; d++)
+    for (let h = 0; h < HEATMAP_HOURS; h++) {
+      const peak = Math.exp(-Math.pow((h - 8) / 3, 2)) * (d < 5 ? 1 : 0.7);
+      arr.push(peak + 0.1);
+    }
+  return arr;
+})();
+
 const Heatmap = () => {
-  const days = 7, hours = 12;
-  const cells = useMemo(() => {
-    const arr: number[] = [];
-    for (let d = 0; d < days; d++)
-      for (let h = 0; h < hours; h++) {
-        const peak = Math.exp(-Math.pow((h - 8) / 3, 2)) * (d < 5 ? 1 : 0.7);
-        arr.push(peak + 0.1);
-      }
-    return arr;
-  }, []);
   return (
-    <div style={{ display: "grid", gridTemplateColumns: `repeat(${hours}, 1fr)`, gap: 3 }}>
-      {cells.map((v, i) => (
+    <div style={{ display: "grid", gridTemplateColumns: `repeat(${HEATMAP_HOURS}, 1fr)`, gap: 3 }}>
+      {HEATMAP_CELLS.map((v, i) => (
         <div key={i} style={{ aspectRatio: "1 / 1", background: `color-mix(in oklab, var(--accent) ${(v * 70).toFixed(0)}%, var(--surface-2))`, borderRadius: 3 }} />
       ))}
     </div>

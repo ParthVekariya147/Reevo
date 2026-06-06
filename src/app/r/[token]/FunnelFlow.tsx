@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import Image from 'next/image';
 import { trackEvent } from '@/lib/analytics/events';
 
 /* ── Types ─────────────────────────────────────────────── */
@@ -426,8 +427,7 @@ export default function FunnelFlow({
           <div className="rv-funnel-header">
             <div className="rv-funnel-logo" style={{ background: brand, overflow: 'hidden', padding: business.logoUrl ? 0 : undefined }}>
               {business.logoUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={business.logoUrl} alt={business.name} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                <Image src={business.logoUrl} alt={business.name} width={64} height={64} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
               ) : business.logoInitials}
             </div>
             <div>

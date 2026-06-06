@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import type { PlanApiRow } from "@/app/pricing/PricingPageClient";
 
@@ -61,16 +61,8 @@ const PLAN_FEATURES: Record<string, [string, boolean][]> = {
 
 const MARKETING_PLAN_IDS = ["free", "pro", "enterprise"];
 
-export default function PricingPreviewClient() {
+export default function PricingPreviewClient({ plans }: { plans: PlanApiRow[] }) {
   const [yearly, setYearly] = useState(true);
-  const [plans, setPlans] = useState<PlanApiRow[]>([]);
-
-  useEffect(() => {
-    fetch("/api/public/plans")
-      .then(r => r.json())
-      .then(d => setPlans(d.plans ?? []))
-      .catch(() => {});
-  }, []);
 
   const planMap = Object.fromEntries(plans.map(p => [p.plan, p]));
 

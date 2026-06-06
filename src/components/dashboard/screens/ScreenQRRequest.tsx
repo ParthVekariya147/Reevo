@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Icon, Card, CardHeader, Btn, Field, Input, Select, Switch, Segmented, QRCanvas } from '../ui';
+import { Icon, Card, CardHeader, Btn, Field, Input, Select, Switch, Segmented } from '../ui';
+import { QRCanvas } from '../ui-qr';
 
 const fetcher = (url: string) => fetch(url).then(r => r.json());
 
