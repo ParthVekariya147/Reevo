@@ -299,7 +299,7 @@ export default function FeaturesPage() {
             <p className="lead" style={{ margin: "22px auto 0", textAlign: "center" }}>
               From the QR a customer scans to the dashboard your CFO loves — Reevo is the only tool you need to turn visits into authentic Google reviews.
             </p>
-            <div style={{ display: "flex", justifyContent: "center", gap: 12, marginTop: 32 }}>
+            <div style={{ display: "flex", justifyContent: "center", gap: 12, marginTop: 32, flexWrap: "wrap" }}>
               <Link href="/signup" className="btn btn-accent btn-lg">
                 Start free trial <ArrowIcon />
               </Link>
@@ -414,14 +414,17 @@ export default function FeaturesPage() {
       </main>
       <Footer />
 
-      <style>{`@media (max-width: 1000px) { .deep-grid { grid-template-columns: 1fr !important; gap: 48px !important; direction: ltr !important; } }`}</style>
+      <style>{`
+        @media (max-width: 1000px) { .deep-grid { grid-template-columns: 1fr !important; gap: 48px !important; direction: ltr !important; } }
+        @media (max-width: 640px) { .features-cta-banner { padding: 44px 24px !important; border-radius: 20px !important; } }
+      `}</style>
     </>
   );
 }
 
 function CTABanner() {
   return (
-    <div style={{
+    <div className="features-cta-banner" style={{
       position: "relative", overflow: "hidden", borderRadius: 28, padding: "72px 64px",
       background: "linear-gradient(135deg, #0A0A14 0%, #1A1538 60%, #2D2070 100%)",
       color: "white",
@@ -441,7 +444,7 @@ function CTABanner() {
         <p style={{ fontSize: 18, color: "rgba(255,255,255,0.7)", marginTop: 18, maxWidth: 540, lineHeight: 1.55 }}>
           Print one QR code, start collecting authentic reviews tonight. Cancel anytime.
         </p>
-        <div style={{ display: "flex", marginTop: 28, gap: 12 }}>
+        <div style={{ display: "flex", marginTop: 28, gap: 12, flexWrap: "wrap" }}>
           <Link href="/signup" className="btn btn-lg" style={{ background: "white", color: "#0A0A14", borderColor: "white" }}>
             Start free trial <ArrowIcon />
           </Link>
