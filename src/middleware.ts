@@ -186,16 +186,23 @@ export async function middleware(request: NextRequest) {
   }
 
   // ── 3. Logged-in user → redirect away from auth pages ───────────────────
-  if (user && pathname === "/login") {
+  // Role resolves to a single destination: admin → admin panel, owner → dashboard/onboarding.
+  if (user && (pathname === "/login" || pathname === "/signup")) {
+    let destPath: string;
+    if (serviceRoleKey) {
+      const { data: adminRow } = await createSupabaseAdmin(supabaseUrl, serviceRoleKey, {
+        auth: { autoRefreshToken: false, persistSession: false },
+      })
+        .from('admin_users')
+        .select('id')
+        .eq('id', user.id)
+        .maybeSingle();
+      destPath = adminRow ? '/admin/dashboard' : (pathname === '/signup' ? '/app/business_dashboard/onboarding' : DASHBOARD);
+    } else {
+      destPath = pathname === '/signup' ? '/app/business_dashboard/onboarding' : DASHBOARD;
+    }
     const url = request.nextUrl.clone();
-    url.pathname = DASHBOARD;
-    return NextResponse.redirect(url);
-  }
-  // Redirect away from signup to onboarding so users who haven't finished
-  // setup are sent to the right place rather than straight to the dashboard.
-  if (user && pathname === "/signup") {
-    const url = request.nextUrl.clone();
-    url.pathname = '/app/business_dashboard/onboarding';
+    url.pathname = destPath;
     return NextResponse.redirect(url);
   }
 

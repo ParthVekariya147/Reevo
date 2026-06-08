@@ -220,6 +220,12 @@ export async function POST(req: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
+  // Admin accounts cannot own a business profile
+  const { data: adminRow } = await db.from('admin_users').select('id').eq('id', user.id).maybeSingle();
+  if (adminRow) {
+    return NextResponse.json({ error: 'Admin accounts cannot create or manage a business profile.' }, { status: 403 });
+  }
+
   const body = await req.json().catch(() => null);
   const payload = buildPayload(body as Record<string, unknown> | null, user.id);
   if (!payload.name) return NextResponse.json({ error: 'name is required' }, { status: 400 });
@@ -272,6 +278,12 @@ export async function PATCH(req: NextRequest) {
   const db = createAdminClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  // Admin accounts cannot own a business profile
+  const { data: adminRow } = await db.from('admin_users').select('id').eq('id', user.id).maybeSingle();
+  if (adminRow) {
+    return NextResponse.json({ error: 'Admin accounts cannot create or manage a business profile.' }, { status: 403 });
+  }
 
   const body = await req.json().catch(() => ({}));
   const updates: Record<string, unknown> = {};

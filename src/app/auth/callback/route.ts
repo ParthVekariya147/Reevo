@@ -54,6 +54,16 @@ export async function GET(request: NextRequest) {
         return NextResponse.redirect(new URL("/set-password", origin));
       }
 
+      // Admin accounts → admin panel, no business flow
+      const { data: adminRow } = await adminClient
+        .from('admin_users')
+        .select('id')
+        .eq('id', user.id)
+        .maybeSingle();
+      if (adminRow) {
+        return NextResponse.redirect(new URL('/admin/dashboard', origin));
+      }
+
       // New user with no business → send to onboarding
       const { business: biz } = await getCurrentBusiness(supabase, user.id);
       const dest = biz?.onboarding_complete ? next : "/app/business_dashboard/onboarding";

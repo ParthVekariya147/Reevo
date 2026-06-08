@@ -1,13 +1,21 @@
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { getCurrentBusiness } from '@/lib/businesses/current';
 import ScreenOnboarding from '@/components/dashboard/screens/ScreenOnboarding';
+import { redirect } from 'next/navigation';
 
 export default async function OnboardingPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect('/login');
+
+  // Admin accounts have no business profile
+  const db = createAdminClient();
+  const { data: adminRow } = await db.from('admin_users').select('id').eq('id', user.id).maybeSingle();
+  if (adminRow) redirect('/admin/dashboard');
 
   // Load any partial save so the wizard can pre-fill and resume
-  const { business: biz } = await getCurrentBusiness(supabase, user!.id);
+  const { business: biz } = await getCurrentBusiness(supabase, user.id);
   const existingBusiness = biz ? {
     name: biz.name as string,
     tagline: (biz.tagline as string | null) ?? null,
