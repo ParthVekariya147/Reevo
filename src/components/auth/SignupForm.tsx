@@ -73,6 +73,13 @@ export default function SignupForm() {
     }
 
     setLoading(false);
+
+    if (data.session) {
+      router.refresh();
+      router.push('/app/business_dashboard/onboarding');
+      return;
+    }
+
     router.push(`/check-email?email=${encodeURIComponent(form.email)}`);
   }
 
