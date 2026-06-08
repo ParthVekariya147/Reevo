@@ -144,9 +144,17 @@ function CreateModal({ onClose, onCreated }: { onClose: () => void; onCreated: (
 // ── main component ───────────────────────────────────────────
 
 export default function ScreenQR() {
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [creating,   setCreating]   = useState(false);
-  const [patching,   setPatching]   = useState(false);
+  const [selectedId,   setSelectedId]   = useState<string | null>(null);
+  const [creating,     setCreating]     = useState(false);
+  const [patching,     setPatching]     = useState(false);
+  const [downloading,  setDownloading]  = useState<'png' | 'svg' | null>(null);
+  const [sharing,      setSharing]      = useState(false);
+  const [shareError,   setShareError]   = useState('');
+  const [supportsShare, setSupportsShare] = useState(false);
+
+  useEffect(() => {
+    setSupportsShare(typeof navigator.canShare === 'function');
+  }, []);
 
   const queryClient = useQueryClient();
   const { data: qrData, isLoading: qrLoading, error: qrError, refetch: qrRefetch } = useQuery<{ codes: QRCode[] }>({
@@ -181,6 +189,62 @@ export default function ScreenQR() {
   // Copy URL to clipboard
   function copyUrl() {
     if (funnelUrl) navigator.clipboard.writeText(funnelUrl);
+  }
+
+  // Blob-URL download — works on mobile Safari where <a download> is unreliable
+  async function downloadQR(format: 'png' | 'svg') {
+    if (!current || downloading) return;
+    setDownloading(format);
+    try {
+      const res  = await fetch(`/api/qr/${current.id}/image?format=${format}`);
+      if (!res.ok) throw new Error(`Download failed: ${res.status}`);
+      const blob = await res.blob();
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      a.href     = url;
+      a.download = `${current.campaign_name}-qr.${format}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error('[QR download]', e);
+    } finally {
+      setDownloading(null);
+    }
+  }
+
+  // Web Share API — PNG only; SVG stays download-only (WhatsApp/gallery don't accept SVG)
+  async function shareQR() {
+    if (!current || sharing) return;
+    setSharing(true);
+    setShareError('');
+    try {
+      const res  = await fetch(`/api/qr/${current.id}/image?format=png`);
+      if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
+      const blob = await res.blob();
+      const file = new File([blob], `${current.campaign_name}-qr.png`, { type: 'image/png' });
+
+      if (navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ files: [file], title: `${current.campaign_name} QR code` });
+      } else {
+        // canShare returned false mid-flight (e.g. PWA context changed) — fall back to download
+        const url  = URL.createObjectURL(blob);
+        const a    = document.createElement('a');
+        a.href     = url;
+        a.download = `${current.campaign_name}-qr.png`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
+    } catch (e) {
+      if ((e as Error).name === 'AbortError') return; // user cancelled share sheet — silent
+      console.error('[QR share]', e);
+      setShareError('Share failed — try downloading instead.');
+    } finally {
+      setSharing(false);
+    }
   }
 
   // PATCH a single field on the current campaign
@@ -259,13 +323,35 @@ export default function ScreenQR() {
                       <div className="lp-qr-frame" style={{ borderColor: `var(--lp-${current.tone})` }}>
                         <QRCanvas value={funnelUrl || 'https://reevo.io'} size={220} color="#0A0B14" bg="#FFFFFF" radius={16} />
                       </div>
-                      <div className="lp-flex" style={{ gap: 8, marginTop: 12, justifyContent: 'center' }}>
-                        <a href={`/api/qr/${current.id}/image?format=png`} download={`${current.campaign_name}.png`}>
-                          <Btn icon="download" size="sm">PNG</Btn>
-                        </a>
-                        <a href={`/api/qr/${current.id}/image?format=svg`} download={`${current.campaign_name}.svg`}>
-                          <Btn icon="download" size="sm">SVG</Btn>
-                        </a>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 12, justifyContent: 'center' }}>
+                        <Btn
+                          icon="download" size="sm"
+                          disabled={downloading !== null || sharing}
+                          onClick={() => downloadQR('png')}
+                        >
+                          {downloading === 'png' ? 'Saving…' : 'PNG'}
+                        </Btn>
+                        <Btn
+                          icon="download" size="sm"
+                          disabled={downloading !== null || sharing}
+                          onClick={() => downloadQR('svg')}
+                        >
+                          {downloading === 'svg' ? 'Saving…' : 'SVG'}
+                        </Btn>
+                        {supportsShare && (
+                          <Btn
+                            icon="upload" size="sm"
+                            disabled={sharing || downloading !== null}
+                            onClick={shareQR}
+                          >
+                            {sharing ? 'Sharing…' : 'Share'}
+                          </Btn>
+                        )}
+                        {shareError && (
+                          <div style={{ width: '100%', fontSize: 11, color: 'var(--lp-danger)', textAlign: 'center' }}>
+                            {shareError}
+                          </div>
+                        )}
                       </div>
                     </div>
 
