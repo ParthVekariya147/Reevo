@@ -51,6 +51,7 @@ const ALLOWED_PLATFORM_IDS = new Set([
 
 export function sanitizePlatforms(value: unknown): { id: string; url: string; enabled: boolean }[] {
   if (!Array.isArray(value)) return [];
+  const seen = new Set<string>();
   return value
     .filter(Boolean)
     .slice(0, 20) // hard cap — no business needs >20 platforms
@@ -65,5 +66,10 @@ export function sanitizePlatforms(value: unknown): { id: string; url: string; en
         enabled: Boolean(e.enabled),
       };
     })
-    .filter((e): e is { id: string; url: string; enabled: boolean } => e !== null);
+    .filter((e): e is { id: string; url: string; enabled: boolean } => e !== null)
+    .filter(e => {
+      if (seen.has(e.id)) return false;
+      seen.add(e.id);
+      return true;
+    });
 }

@@ -222,7 +222,13 @@ export default function ScreenOnboarding({ user, existingBusiness, initialStep =
   // Platforms — resume from DB or seed with industry recommendations
   const [platforms, setPlatforms] = useState<ReviewPlatformEntry[]>(() => {
     if (existingBusiness?.review_platforms?.length) {
-      return existingBusiness.review_platforms;
+      // Deduplicate by id — keep first occurrence; guards against corrupt DB rows
+      const seen = new Set<string>();
+      return existingBusiness.review_platforms.filter(p => {
+        if (seen.has(p.id)) return false;
+        seen.add(p.id);
+        return true;
+      });
     }
     return ind.platforms.map(id => ({
       id,

@@ -229,7 +229,9 @@ export default function FunnelFlow({
   const demoReason    = demoLimit?.reason ?? runtimeDemoLimit?.reason ?? '';
 
   // Resolve active platforms; fall back to googleLink for old records
-  const activePlatforms = (business?.reviewPlatforms ?? []).filter(p => p.enabled && p.url.trim());
+  const activePlatforms = (business?.reviewPlatforms ?? [])
+    .filter(p => p.enabled && p.url.trim())
+    .filter((p, i, arr) => arr.findIndex(x => x.id === p.id) === i); // dedupe by id — first occurrence wins
   const resolvedPlatforms = activePlatforms.length > 0
     ? activePlatforms
     : (business?.googleLink ? [{ id: 'google', url: business.googleLink, enabled: true }] : []);

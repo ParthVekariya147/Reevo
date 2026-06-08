@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import {
@@ -428,6 +429,12 @@ export async function PATCH(req: NextRequest) {
   if (Object.keys(extraUpdates).length > 0) {
     await db.from('businesses').update(extraUpdates).eq('owner_id', user.id);
     if (result.business) Object.assign(result.business, extraUpdates);
+  }
+
+  // When onboarding completes, invalidate the dashboard layout cache so the
+  // sidebar appears immediately on the next navigation without a hard refresh.
+  if (updates.onboarding_complete === true) {
+    revalidatePath('/app/business_dashboard', 'layout');
   }
 
   const response = NextResponse.json({ business: result.business });
