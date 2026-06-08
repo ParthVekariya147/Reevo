@@ -24,7 +24,9 @@ async function lookupToken(
         businesses (
           id, name, tagline, google_link, brand_color,
           logo_initials, logo_url, min_rating_for_google, language, review_platforms,
-          funnel_style, funnel_heading, funnel_sub, instagram_handle
+          funnel_style, funnel_heading, funnel_sub, instagram_handle,
+          funnel_font, funnel_accent_color, funnel_bg_image_url,
+          funnel_bg_blur, funnel_bg_dim, funnel_card_bg, funnel_preset_name
         )
       `)
       .eq('token', token)
@@ -41,6 +43,10 @@ async function lookupToken(
       review_platforms: ReviewPlatformEntry[] | null;
       funnel_style: string | null; funnel_heading: string | null; funnel_sub: string | null;
       instagram_handle: string | null;
+      funnel_font: string | null; funnel_accent_color: string | null;
+      funnel_bg_image_url: string | null; funnel_bg_blur: number | null;
+      funnel_bg_dim: number | null; funnel_card_bg: string | null;
+      funnel_preset_name: string | null;
     };
 
     // Use saved platforms; fall back to google_link so old records still work
@@ -61,10 +67,17 @@ async function lookupToken(
         logoUrl:            biz.logo_url    ?? null,
         minRatingForGoogle: biz.min_rating_for_google,
         language:           biz.language,
-        funnelStyle:        biz.funnel_style     ?? 'elegant',
-        funnelHeading:      biz.funnel_heading   ?? null,
-        funnelSub:          biz.funnel_sub       ?? null,
-        instagramHandle:    biz.instagram_handle ?? null,
+        funnelStyle:        biz.funnel_style        ?? 'elegant',
+        funnelHeading:      biz.funnel_heading      ?? null,
+        funnelSub:          biz.funnel_sub          ?? null,
+        instagramHandle:    biz.instagram_handle    ?? null,
+        funnelFont:         biz.funnel_font         ?? null,
+        funnelAccentColor:  biz.funnel_accent_color ?? null,
+        funnelBgImageUrl:   biz.funnel_bg_image_url ?? null,
+        funnelBgBlur:       biz.funnel_bg_blur      ?? null,
+        funnelBgDim:        biz.funnel_bg_dim       ?? null,
+        funnelCardBg:       biz.funnel_card_bg      ?? null,
+        funnelPresetName:   biz.funnel_preset_name  ?? null,
       },
     };
   } catch {

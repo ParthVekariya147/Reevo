@@ -20,6 +20,13 @@ export type BusinessData = {
   funnelHeading?:     string | null;
   funnelSub?:         string | null;
   instagramHandle?:   string | null;
+  funnelFont?:        string | null;
+  funnelAccentColor?: string | null;
+  funnelBgImageUrl?:  string | null;
+  funnelBgBlur?:      number | null;
+  funnelBgDim?:       number | null;
+  funnelCardBg?:      string | null;
+  funnelPresetName?:  string | null;
 };
 
 type Step = 'landing' | 'rating' | 'generating' | 'review' | 'private' | 'success';
@@ -216,12 +223,24 @@ export default function FunnelFlow({
   const lang  = business?.language  ?? 'en';
   const brand = business?.brandColor ?? '#6E5BFF';
 
+  // Resolve appearance values — new fields fall back to sensible defaults
+  const accent   = business?.funnelAccentColor ?? brand;
+  const font     = business?.funnelFont        ?? 'DM Sans';
+  const bgImage  = business?.funnelBgImageUrl  ?? null;
+  const bgBlur   = business?.funnelBgBlur      ?? 0;
+  const bgDim    = business?.funnelBgDim        ?? 0;
+
   type SV = { bg: string; fg: string; sub: string; divider: string; card: string; btnBg: string; btnFg: string; font: string };
   const styleMap: Record<string, SV> = {
-    elegant: { bg: '#FAFAF7', fg: '#0F0F12', sub: '#6B7280', divider: '#E5E7EB', card: '#fff',                     btnBg: brand, btnFg: '#fff', font: 'ui-serif, Georgia, serif' },
-    vivid:   { bg: `linear-gradient(160deg, ${brand} 0%, #8B5CF6 100%)`, fg: '#fff', sub: 'rgba(255,255,255,0.75)', divider: 'rgba(255,255,255,0.2)', card: 'rgba(255,255,255,0.15)', btnBg: '#fff', btnFg: brand, font: 'system-ui, sans-serif' },
-    minimal: { bg: '#FFFFFF', fg: '#000',    sub: '#6B7280', divider: '#E5E7EB', card: '#F9FAFB',                   btnBg: '#000', btnFg: '#fff', font: 'system-ui, sans-serif' },
-    playful: { bg: '#FFF6E8', fg: '#3F2E1B', sub: '#92745A', divider: '#F0DFC0', card: 'rgba(255,255,255,0.7)',     btnBg: brand, btnFg: '#fff', font: 'system-ui, sans-serif' },
+    elegant: { bg: '#FAFAF7',                                                         fg: '#0F0F12', sub: '#6B7280',              divider: '#E5E7EB',                   card: '#fff',                     btnBg: accent, btnFg: '#fff', font: 'ui-serif, Georgia, serif' },
+    vivid:   { bg: `linear-gradient(160deg, ${accent} 0%, #8B5CF6 100%)`,            fg: '#fff',    sub: 'rgba(255,255,255,0.75)', divider: 'rgba(255,255,255,0.2)',    card: 'rgba(255,255,255,0.15)',   btnBg: '#fff', btnFg: accent, font: 'system-ui, sans-serif' },
+    playful: { bg: '#FFF6E8',                                                         fg: '#3F2E1B', sub: '#92745A',               divider: '#F0DFC0',                   card: 'rgba(255,255,255,0.7)',    btnBg: accent, btnFg: '#fff', font: 'system-ui, sans-serif' },
+    minimal: { bg: '#FFFFFF',                                                         fg: '#000',    sub: '#6B7280',               divider: '#E5E7EB',                   card: 'rgba(255,255,255,0.97)',   btnBg: accent, btnFg: '#fff', font: 'system-ui, sans-serif' },
+    glass:   { bg: 'rgba(120,120,160,0.25)',                                          fg: '#fff',    sub: 'rgba(255,255,255,0.75)', divider: 'rgba(255,255,255,0.2)',    card: 'rgba(255,255,255,0.25)',   btnBg: accent, btnFg: '#fff', font: 'system-ui, sans-serif' },
+    dark:    { bg: '#0a0a0a',                                                         fg: '#f0ece6', sub: 'rgba(240,236,230,0.6)', divider: 'rgba(255,255,255,0.1)',     card: 'rgba(15,15,15,0.92)',      btnBg: accent, btnFg: '#fff', font: 'system-ui, sans-serif' },
+    luxury:  { bg: '#f5f0e8',                                                         fg: '#1a1208', sub: '#6b5a3a',               divider: 'rgba(180,150,80,0.25)',     card: 'rgba(250,246,238,0.97)',   btnBg: accent, btnFg: '#fff', font: 'ui-serif, Georgia, serif' },
+    neon:    { bg: '#050514',                                                         fg: '#e0fff0', sub: 'rgba(224,255,240,0.6)', divider: 'rgba(100,255,180,0.25)',    card: 'rgba(5,5,20,0.92)',        btnBg: accent, btnFg: '#000', font: 'system-ui, sans-serif' },
+    clay:    { bg: '#f0e8d8',                                                         fg: '#3a2a18', sub: '#7a5a3a',               divider: 'rgba(180,140,100,0.2)',     card: 'rgba(245,235,220,0.96)',   btnBg: accent, btnFg: '#fff', font: 'system-ui, sans-serif' },
   };
   const sv = styleMap[business?.funnelStyle ?? 'elegant'] ?? styleMap.elegant;
 
@@ -247,6 +266,18 @@ export default function FunnelFlow({
   const track = useCallback((event: Parameters<typeof trackEvent>[0]['event'], extra?: Record<string, unknown>) => {
     void trackEvent({ token, event, meta: extra });
   }, [token]);
+
+  /* inject Google Font link tag when a non-default font is selected */
+  useEffect(() => {
+    if (font === 'DM Sans') return;
+    const id = `gfont-${font.replace(/\s/g, '-')}`;
+    if (document.getElementById(id)) return;
+    const link = document.createElement('link');
+    link.id = id;
+    link.rel = 'stylesheet';
+    link.href = `https://fonts.googleapis.com/css2?family=${font.replace(/ /g, '+')}:wght@300;400;500;600&display=swap`;
+    document.head.appendChild(link);
+  }, [font]);
 
   /* fire scan exactly once on mount — ref guard prevents the double-fire
      that React StrictMode causes in development */
@@ -423,11 +454,11 @@ export default function FunnelFlow({
     return (
       <div
         className="rv-funnel-root"
-        style={{ '--rv-brand': brand, background: sv.bg, fontFamily: sv.font } as React.CSSProperties}
+        style={{ '--rv-brand': accent, background: sv.bg, fontFamily: sv.font } as React.CSSProperties}
       >
-        <div className="rv-funnel-card" style={{ background: sv.card }}>
+        <div className="rv-funnel-card" style={{ background: sv.card, fontFamily: `'${font}', sans-serif` }}>
           <div className="rv-funnel-header">
-            <div className="rv-funnel-logo" style={{ background: brand, overflow: 'hidden', padding: business.logoUrl ? 0 : undefined }}>
+            <div className="rv-funnel-logo" style={{ background: accent, overflow: 'hidden', padding: business.logoUrl ? 0 : undefined }}>
               {business.logoUrl ? (
                 <Image src={business.logoUrl} alt={business.name} width={64} height={64} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
               ) : business.logoInitials}
@@ -442,8 +473,8 @@ export default function FunnelFlow({
             <div className="rv-success">
               <div className="rv-success-icon" style={{ background: 'rgba(110,91,255,0.12)' }}>
                 <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-                  <rect x="10" y="14" width="12" height="10" rx="2" stroke={brand} strokeWidth="2"/>
-                  <path d="M12 14v-3a4 4 0 018 0v3" stroke={brand} strokeWidth="2" strokeLinecap="round"/>
+                  <rect x="10" y="14" width="12" height="10" rx="2" stroke={accent} strokeWidth="2"/>
+                  <path d="M12 14v-3a4 4 0 018 0v3" stroke={accent} strokeWidth="2" strokeLinecap="round"/>
                 </svg>
               </div>
               <p className="rv-success-title" style={{ color: sv.fg }}>Your demo has ended</p>
@@ -481,13 +512,37 @@ export default function FunnelFlow({
   return (
     <div
       className="rv-funnel-root"
-      style={{ '--rv-brand': brand, background: sv.bg, fontFamily: sv.font } as React.CSSProperties}
+      style={{
+        '--rv-brand': accent,
+        background: sv.bg,
+        fontFamily: sv.font,
+        position: 'relative',
+        ...(bgImage && {
+          backgroundImage: `url('${bgImage}')`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+        }),
+      } as React.CSSProperties}
     >
-      <div className={`rv-funnel-card ${visible ? 'rv-step-enter' : 'rv-step-exit'}`} style={{ background: sv.card }}>
+      {/* blur overlay */}
+      <div style={{
+        position: 'absolute', inset: 0, pointerEvents: 'none',
+        backdropFilter: bgBlur > 0 ? `blur(${bgBlur}px)` : undefined,
+        WebkitBackdropFilter: bgBlur > 0 ? `blur(${bgBlur}px)` : undefined,
+      } as React.CSSProperties} />
+      {/* dim overlay */}
+      <div style={{
+        position: 'absolute', inset: 0, pointerEvents: 'none',
+        background: bgDim > 0 ? `rgba(0,0,0,${bgDim / 100})` : undefined,
+      }} />
+      <div
+        className={`rv-funnel-card ${visible ? 'rv-step-enter' : 'rv-step-exit'}`}
+        style={{ background: sv.card, fontFamily: `'${font}', sans-serif`, position: 'relative', zIndex: 1 }}
+      >
 
         {/* Header — always visible */}
         <div className="rv-funnel-header">
-          <div className="rv-funnel-logo" style={{ background: brand, overflow: 'hidden', padding: business.logoUrl ? 0 : undefined }}>
+          <div className="rv-funnel-logo" style={{ background: accent, overflow: 'hidden', padding: business.logoUrl ? 0 : undefined }}>
             {business.logoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={business.logoUrl} alt={business.name} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
@@ -745,7 +800,7 @@ export default function FunnelFlow({
         </div>
       </div>
 
-      <p className="rv-poweredby">
+      <p className="rv-poweredby" style={{ position: 'relative', zIndex: 1 }}>
         Powered by <a href="/" target="_blank" rel="noopener">Reevo</a>
       </p>
     </div>

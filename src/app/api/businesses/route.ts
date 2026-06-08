@@ -20,6 +20,9 @@ import { isValidGoogleReviewUrl } from '@/lib/validation/urls';
 const VALID_LENGTHS = new Set(['short', 'medium', 'long']);
 
 const INSTAGRAM_RE = /^[a-z0-9._]{1,30}$/i;
+const HEX_COLOR_RE = /^#[0-9a-fA-F]{6}$/;
+
+const VALID_FUNNEL_FONTS = new Set(['DM Sans', 'Playfair Display', 'Syne', 'Fraunces', 'Cormorant Garamond']);
 
 function sanitizeInstagramHandle(raw: unknown): string | null {
   if (raw === null || raw === undefined || raw === '') return null;
@@ -302,10 +305,53 @@ export async function PATCH(req: NextRequest) {
   if ('review_keywords'          in body) updates.review_keywords          = sanitizeString(body.review_keywords, 300) || null;
   if ('owner_name'               in body) updates.owner_name               = sanitizeString(body.owner_name, 100) || null;
   if ('review_length_preference' in body) updates.review_length_preference = sanitizeReviewLengths(body.review_length_preference);
-  if ('funnel_style'      in body) updates.funnel_style      = sanitizeString(body.funnel_style, 20) || 'elegant';
+  if ('funnel_style'      in body) updates.funnel_style      = sanitizeString(body.funnel_style, 20) || 'minimal';
   if ('funnel_heading'    in body) updates.funnel_heading    = sanitizeString(body.funnel_heading, 200) || null;
   if ('funnel_sub'        in body) updates.funnel_sub        = sanitizeString(body.funnel_sub, 300) || null;
   if ('instagram_handle'  in body) updates.instagram_handle  = sanitizeInstagramHandle(body.instagram_handle);
+
+  // Funnel appearance fields — validate before accepting
+  if ('funnel_font' in body) {
+    const v = String(body.funnel_font ?? '');
+    if (v && !VALID_FUNNEL_FONTS.has(v)) {
+      return NextResponse.json({ error: 'Invalid funnel_font value' }, { status: 400 });
+    }
+    updates.funnel_font = v || 'DM Sans';
+  }
+  if ('funnel_accent_color' in body) {
+    const v = String(body.funnel_accent_color ?? '');
+    if (v && !HEX_COLOR_RE.test(v)) {
+      return NextResponse.json({ error: 'funnel_accent_color must be a 6-digit hex color' }, { status: 400 });
+    }
+    updates.funnel_accent_color = v || '#1a1a1a';
+  }
+  if ('funnel_bg_image_url' in body) {
+    const v = body.funnel_bg_image_url;
+    if (v !== null && v !== undefined && v !== '') {
+      try { new URL(String(v)); } catch {
+        return NextResponse.json({ error: 'funnel_bg_image_url must be a valid URL or null' }, { status: 400 });
+      }
+      updates.funnel_bg_image_url = String(v);
+    } else {
+      updates.funnel_bg_image_url = null;
+    }
+  }
+  if ('funnel_bg_blur' in body) {
+    const n = parseInt(String(body.funnel_bg_blur ?? '0'), 10);
+    if (isNaN(n) || n < 0 || n > 20) {
+      return NextResponse.json({ error: 'funnel_bg_blur must be an integer 0–20' }, { status: 400 });
+    }
+    updates.funnel_bg_blur = n;
+  }
+  if ('funnel_bg_dim' in body) {
+    const n = parseInt(String(body.funnel_bg_dim ?? '0'), 10);
+    if (isNaN(n) || n < 0 || n > 80) {
+      return NextResponse.json({ error: 'funnel_bg_dim must be an integer 0–80' }, { status: 400 });
+    }
+    updates.funnel_bg_dim = n;
+  }
+  if ('funnel_card_bg'     in body) updates.funnel_card_bg     = sanitizeString(body.funnel_card_bg, 20) || null;
+  if ('funnel_preset_name' in body) updates.funnel_preset_name = sanitizeString(body.funnel_preset_name, 60) || null;
 
   for (const key of Object.keys(updates)) {
     if (updates[key] === undefined) delete updates[key];
@@ -422,10 +468,17 @@ export async function PATCH(req: NextRequest) {
 
   // Fields not in the upsert_business RPC — save directly.
   const extraUpdates: Record<string, unknown> = {};
-  if ('funnel_style'     in updates) extraUpdates.funnel_style     = updates.funnel_style;
-  if ('funnel_heading'   in updates) extraUpdates.funnel_heading   = updates.funnel_heading;
-  if ('funnel_sub'       in updates) extraUpdates.funnel_sub       = updates.funnel_sub;
-  if ('instagram_handle' in updates) extraUpdates.instagram_handle = updates.instagram_handle;
+  if ('funnel_style'        in updates) extraUpdates.funnel_style        = updates.funnel_style;
+  if ('funnel_heading'      in updates) extraUpdates.funnel_heading      = updates.funnel_heading;
+  if ('funnel_sub'          in updates) extraUpdates.funnel_sub          = updates.funnel_sub;
+  if ('instagram_handle'    in updates) extraUpdates.instagram_handle    = updates.instagram_handle;
+  if ('funnel_font'         in updates) extraUpdates.funnel_font         = updates.funnel_font;
+  if ('funnel_accent_color' in updates) extraUpdates.funnel_accent_color = updates.funnel_accent_color;
+  if ('funnel_bg_image_url' in updates) extraUpdates.funnel_bg_image_url = updates.funnel_bg_image_url;
+  if ('funnel_bg_blur'      in updates) extraUpdates.funnel_bg_blur      = updates.funnel_bg_blur;
+  if ('funnel_bg_dim'       in updates) extraUpdates.funnel_bg_dim       = updates.funnel_bg_dim;
+  if ('funnel_card_bg'      in updates) extraUpdates.funnel_card_bg      = updates.funnel_card_bg;
+  if ('funnel_preset_name'  in updates) extraUpdates.funnel_preset_name  = updates.funnel_preset_name;
   if (Object.keys(extraUpdates).length > 0) {
     await db.from('businesses').update(extraUpdates).eq('owner_id', user.id);
     if (result.business) Object.assign(result.business, extraUpdates);

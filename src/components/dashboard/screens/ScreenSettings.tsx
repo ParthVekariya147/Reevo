@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import dynamic from 'next/dynamic';
+import { createClient } from '@/lib/supabase/client';
 import { Icon, Card, CardHeader, Btn, Badge, Avatar, Field, Input, Select, Switch, StarRating } from '../ui';
 
 const SecuritySection = dynamic(() => import('./ScreenSettingsSecurity'), {
@@ -25,6 +26,14 @@ interface Business {
   plan:                     string;
   review_length_preference: string[];
   instagram_handle:         string | null;
+  funnel_style:             string;
+  funnel_font:              string;
+  funnel_accent_color:      string;
+  funnel_bg_image_url:      string | null;
+  funnel_bg_blur:           number;
+  funnel_bg_dim:            number;
+  funnel_card_bg:           string | null;
+  funnel_preset_name:       string | null;
 }
 
 interface UserInfo { id: string; email: string; full_name: string }
@@ -77,15 +86,50 @@ function NotifPref({ title, sub, defaultOn = false }: { title: string; sub: stri
 }
 
 const SECTIONS = [
-  { v: 'profile',  label: 'Business profile',    icon: 'building' },
-  { v: 'brand',    label: 'Branding',            icon: 'sparkles' },
-  { v: 'funnel',   label: 'Funnel defaults',     icon: 'funnel'   },
-  { v: 'notifs',   label: 'Notifications',       icon: 'bell'     },
-  { v: 'team',     label: 'Team access',         icon: 'team'     },
-  { v: 'security', label: 'Security',            icon: 'shield'   },
-  { v: 'api',      label: 'API & webhooks',      icon: 'key'      },
-  { v: 'billing',  label: 'Billing preferences', icon: 'card'     },
+  { v: 'profile',    label: 'Business profile',    icon: 'building' },
+  { v: 'brand',      label: 'Branding',            icon: 'sparkles' },
+  { v: 'appearance', label: 'Funnel appearance',   icon: 'sparkles' },
+  { v: 'funnel',     label: 'Funnel defaults',     icon: 'funnel'   },
+  { v: 'notifs',     label: 'Notifications',       icon: 'bell'     },
+  { v: 'team',       label: 'Team access',         icon: 'team'     },
+  { v: 'security',   label: 'Security',            icon: 'shield'   },
+  { v: 'api',        label: 'API & webhooks',      icon: 'key'      },
+  { v: 'billing',    label: 'Billing preferences', icon: 'card'     },
 ] as const;
+
+const FUNNEL_STYLES = [
+  { value: 'minimal', label: 'Minimal' },
+  { value: 'glass',   label: 'Glass'   },
+  { value: 'dark',    label: 'Dark'    },
+  { value: 'luxury',  label: 'Luxury'  },
+  { value: 'neon',    label: 'Neon'    },
+  { value: 'clay',    label: 'Clay'    },
+] as const;
+
+const FUNNEL_FONTS: { value: string; label: string }[] = [
+  { value: 'DM Sans',             label: 'DM Sans'    },
+  { value: 'Playfair Display',    label: 'Playfair'   },
+  { value: 'Syne',                label: 'Syne'       },
+  { value: 'Fraunces',            label: 'Fraunces'   },
+  { value: 'Cormorant Garamond',  label: 'Cormorant'  },
+];
+
+const FUNNEL_ACCENT_PRESETS = [
+  '#1a1a1a', '#b5541c', '#2d5a3d', '#9e3a5c',
+  '#1a3a6c', '#3d4a5c', '#8a6a1a', '#5a2d6e',
+];
+
+const FUNNEL_STYLE_MAP: Record<string, { cardBg: string; textColor: string; border: string }> = {
+  minimal: { cardBg: 'rgba(255,255,255,0.97)', textColor: '#111',    border: '1px solid rgba(0,0,0,0.08)'          },
+  glass:   { cardBg: 'rgba(255,255,255,0.25)', textColor: '#fff',    border: '1px solid rgba(255,255,255,0.4)'     },
+  dark:    { cardBg: 'rgba(15,15,15,0.92)',    textColor: '#f0ece6', border: '1px solid rgba(255,255,255,0.1)'     },
+  luxury:  { cardBg: 'rgba(250,246,238,0.97)', textColor: '#1a1208', border: '1px solid rgba(180,150,80,0.35)'    },
+  neon:    { cardBg: 'rgba(5,5,20,0.92)',      textColor: '#e0fff0', border: '1px solid rgba(100,255,180,0.4)'    },
+  clay:    { cardBg: 'rgba(245,235,220,0.96)', textColor: '#3a2a18', border: '1px solid rgba(180,140,100,0.2)'    },
+  elegant: { cardBg: 'rgba(255,255,255,0.97)', textColor: '#111',    border: '1px solid rgba(0,0,0,0.08)'          },
+  vivid:   { cardBg: 'rgba(255,255,255,0.97)', textColor: '#111',    border: '1px solid rgba(0,0,0,0.08)'          },
+  playful: { cardBg: 'rgba(255,255,255,0.97)', textColor: '#111',    border: '1px solid rgba(0,0,0,0.08)'          },
+};
 
 const BRAND_COLORS = ['#6E5BFF','#8B5CF6','#06B6D4','#10B981','#F59E0B','#EF4444','#0F172A'];
 
@@ -133,6 +177,8 @@ export default function ScreenSettings({ initialBusiness, user }: Props) {
   const [saveState, setSaveState] = useState<SaveState>('idle');
 
   const [instagramError, setInstagramError] = useState('');
+  const [bgUploadError, setBgUploadError]   = useState('');
+  const [bgUploading, setBgUploading]       = useState(false);
 
   // Single form state covering all editable business fields
   const [form, setForm] = useState({
@@ -145,6 +191,14 @@ export default function ScreenSettings({ initialBusiness, user }: Props) {
     language:                 initialBusiness?.language                 ?? 'en',
     review_length_preference: (initialBusiness?.review_length_preference ?? ['short', 'medium']) as ReviewLength[],
     instagram_handle:         initialBusiness?.instagram_handle         ?? '',
+    funnel_style:             initialBusiness?.funnel_style             ?? 'minimal',
+    funnel_font:              initialBusiness?.funnel_font              ?? 'DM Sans',
+    funnel_accent_color:      initialBusiness?.funnel_accent_color      ?? '#1a1a1a',
+    funnel_bg_image_url:      initialBusiness?.funnel_bg_image_url      ?? null as string | null,
+    funnel_bg_blur:           initialBusiness?.funnel_bg_blur           ?? 0,
+    funnel_bg_dim:            initialBusiness?.funnel_bg_dim            ?? 0,
+    funnel_card_bg:           initialBusiness?.funnel_card_bg           ?? null as string | null,
+    funnel_preset_name:       initialBusiness?.funnel_preset_name       ?? null as string | null,
   });
 
   function set<K extends keyof typeof form>(key: K, value: typeof form[K]) {
@@ -162,6 +216,30 @@ export default function ScreenSettings({ initialBusiness, user }: Props) {
       return { ...f, review_length_preference: next.length > 0 ? next : current };
     });
     setSaveState('idle');
+  }
+
+  async function handleBgImageUpload(file: File) {
+    if (file.size > 2 * 1024 * 1024) {
+      setBgUploadError('Image must be under 2 MB');
+      return;
+    }
+    setBgUploadError('');
+    setBgUploading(true);
+    try {
+      const supabase = createClient();
+      const ext = file.name.split('.').pop() ?? 'jpg';
+      const path = `${initialBusiness?.id}/bg.${ext}`;
+      const { error } = await supabase.storage
+        .from('funnel-backgrounds')
+        .upload(path, file, { upsert: true });
+      if (error) throw error;
+      const { data } = supabase.storage.from('funnel-backgrounds').getPublicUrl(path);
+      set('funnel_bg_image_url', data.publicUrl);
+    } catch {
+      setBgUploadError('Upload failed. Please try again.');
+    } finally {
+      setBgUploading(false);
+    }
   }
 
   async function save() {
@@ -293,6 +371,223 @@ export default function ScreenSettings({ initialBusiness, user }: Props) {
               </Field>
             </Card>
           )}
+
+          {section === 'appearance' && (() => {
+            const sv = FUNNEL_STYLE_MAP[form.funnel_style] ?? FUNNEL_STYLE_MAP.minimal;
+            return (
+              <Card>
+                <CardHeader title="Funnel appearance" subtitle="Customize how your review funnel looks to customers" />
+
+                {/* Style selector */}
+                <Field label="Card style">
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 4 }}>
+                    {FUNNEL_STYLES.map(s => (
+                      <button
+                        key={s.value}
+                        type="button"
+                        onClick={() => set('funnel_style', s.value)}
+                        style={{
+                          padding:      '6px 16px',
+                          borderRadius: 20,
+                          border:       `1.5px solid ${form.funnel_style === s.value ? form.funnel_accent_color : 'var(--lp-border, #e2e8f0)'}`,
+                          background:   form.funnel_style === s.value ? form.funnel_accent_color : 'transparent',
+                          color:        form.funnel_style === s.value ? '#fff' : 'var(--lp-fg)',
+                          fontSize:     13, fontWeight: 500, cursor: 'pointer',
+                          transition:   'all .15s',
+                        }}
+                      >
+                        {s.label}
+                      </button>
+                    ))}
+                  </div>
+                </Field>
+
+                {/* Font selector */}
+                <Field label="Font">
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 4 }}>
+                    {FUNNEL_FONTS.map(f => (
+                      <button
+                        key={f.value}
+                        type="button"
+                        onClick={() => set('funnel_font', f.value)}
+                        style={{
+                          padding:      '6px 16px',
+                          borderRadius: 20,
+                          border:       `1.5px solid ${form.funnel_font === f.value ? form.funnel_accent_color : 'var(--lp-border, #e2e8f0)'}`,
+                          background:   form.funnel_font === f.value ? form.funnel_accent_color : 'transparent',
+                          color:        form.funnel_font === f.value ? '#fff' : 'var(--lp-fg)',
+                          fontSize:     13, fontWeight: 500, cursor: 'pointer',
+                          fontFamily:   f.value,
+                          transition:   'all .15s',
+                        }}
+                      >
+                        {f.label}
+                      </button>
+                    ))}
+                  </div>
+                </Field>
+
+                {/* Accent color */}
+                <Field label="Accent color">
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', marginTop: 4 }}>
+                    {FUNNEL_ACCENT_PRESETS.map(c => (
+                      <button
+                        key={c}
+                        type="button"
+                        onClick={() => set('funnel_accent_color', c)}
+                        style={{
+                          width: 22, height: 22, borderRadius: '50%',
+                          background: c, border: 'none', cursor: 'pointer', flexShrink: 0,
+                          outline:    form.funnel_accent_color === c ? `2px solid ${c}` : 'none',
+                          outlineOffset: 2,
+                          boxShadow:  form.funnel_accent_color === c ? '0 0 0 1px rgba(0,0,0,0.2)' : 'none',
+                        }}
+                        title={c}
+                      />
+                    ))}
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+                      <input
+                        type="color"
+                        value={form.funnel_accent_color}
+                        onChange={e => set('funnel_accent_color', e.target.value)}
+                        style={{ width: 22, height: 22, padding: 0, border: 'none', borderRadius: '50%', cursor: 'pointer' }}
+                      />
+                      <span style={{ fontSize: 12, color: 'var(--lp-fg-muted)' }}>Custom</span>
+                    </label>
+                  </div>
+                </Field>
+
+                {/* BG image */}
+                <Field label="Background image">
+                  <div style={{ marginTop: 4 }}>
+                    {form.funnel_bg_image_url && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={form.funnel_bg_image_url}
+                          alt="Background preview"
+                          style={{ width: 60, height: 60, objectFit: 'cover', borderRadius: 6, border: '1px solid var(--lp-border)' }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => { set('funnel_bg_image_url', null); set('funnel_bg_blur', 0); set('funnel_bg_dim', 0); }}
+                          style={{ fontSize: 12, color: 'var(--lp-danger, #ef4444)', background: 'none', border: 'none', cursor: 'pointer' }}
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    )}
+                    <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        style={{ display: 'none' }}
+                        disabled={bgUploading}
+                        onChange={e => {
+                          const file = e.target.files?.[0];
+                          if (file) void handleBgImageUpload(file);
+                          e.target.value = '';
+                        }}
+                      />
+                      <span style={{
+                        padding: '6px 14px', borderRadius: 8, fontSize: 13,
+                        border: '1.5px solid var(--lp-border, #e2e8f0)',
+                        background: bgUploading ? 'var(--lp-surface-2)' : 'transparent',
+                        color: 'var(--lp-fg)',
+                      }}>
+                        {bgUploading ? 'Uploading…' : 'Choose image'}
+                      </span>
+                    </label>
+                    {bgUploadError && (
+                      <div style={{ fontSize: 12, color: 'var(--lp-danger, #ef4444)', marginTop: 4 }}>{bgUploadError}</div>
+                    )}
+                  </div>
+                </Field>
+
+                {/* Blur slider */}
+                <Field label={`Background blur — ${form.funnel_bg_blur}`}>
+                  <input
+                    type="range" min={0} max={20} step={1}
+                    value={form.funnel_bg_blur}
+                    disabled={!form.funnel_bg_image_url}
+                    onChange={e => set('funnel_bg_blur', Number(e.target.value))}
+                    style={{ width: '100%', marginTop: 6, opacity: form.funnel_bg_image_url ? 1 : 0.4 }}
+                  />
+                </Field>
+
+                {/* Dim overlay slider */}
+                <Field label={`Dim overlay — ${form.funnel_bg_dim}%`}>
+                  <input
+                    type="range" min={0} max={80} step={1}
+                    value={form.funnel_bg_dim}
+                    onChange={e => set('funnel_bg_dim', Number(e.target.value))}
+                    style={{ width: '100%', marginTop: 6 }}
+                  />
+                </Field>
+
+                {/* Live mini-preview */}
+                <Field label="Preview">
+                  <div style={{
+                    marginTop: 8, width: 200, borderRadius: 14, overflow: 'hidden',
+                    position: 'relative', minHeight: 200,
+                    background: form.funnel_bg_image_url
+                      ? `url('${form.funnel_bg_image_url}') center/cover`
+                      : sv.cardBg,
+                    boxShadow: '0 4px 24px rgba(0,0,0,0.12)',
+                  }}>
+                    {/* blur overlay */}
+                    {form.funnel_bg_image_url && form.funnel_bg_blur > 0 && (
+                      <div style={{ position: 'absolute', inset: 0, backdropFilter: `blur(${form.funnel_bg_blur}px)`, WebkitBackdropFilter: `blur(${form.funnel_bg_blur}px)` }} />
+                    )}
+                    {/* dim overlay */}
+                    {form.funnel_bg_dim > 0 && (
+                      <div style={{ position: 'absolute', inset: 0, background: `rgba(0,0,0,${form.funnel_bg_dim / 100})` }} />
+                    )}
+                    {/* card content */}
+                    <div style={{
+                      position: 'relative', zIndex: 1,
+                      background: form.funnel_bg_image_url ? sv.cardBg : 'transparent',
+                      borderRadius: 10, margin: form.funnel_bg_image_url ? 10 : 0, padding: '14px 16px',
+                      border: sv.border, fontFamily: form.funnel_font,
+                    }}>
+                      {/* logo + name */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                        <div style={{
+                          width: 32, height: 32, borderRadius: '50%', flexShrink: 0,
+                          background: form.funnel_accent_color,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          fontSize: 11, fontWeight: 700, color: '#fff',
+                        }}>
+                          {form.logo_initials || 'BZ'}
+                        </div>
+                        <div>
+                          <div style={{ fontSize: 11, fontWeight: 600, color: sv.textColor, lineHeight: 1.2 }}>
+                            {form.name || 'Your Business'}
+                          </div>
+                          {form.tagline && (
+                            <div style={{ fontSize: 9, color: sv.textColor, opacity: 0.6, lineHeight: 1.2 }}>{form.tagline}</div>
+                          )}
+                        </div>
+                      </div>
+                      {/* divider */}
+                      <div style={{ height: 1, background: sv.border.replace('1px solid ', ''), marginBottom: 8 }} />
+                      {/* heading */}
+                      <div style={{ fontSize: 10, fontWeight: 600, color: sv.textColor, marginBottom: 8, textAlign: 'center' }}>
+                        How was your experience?
+                      </div>
+                      {/* CTA button */}
+                      <div style={{
+                        background: form.funnel_accent_color, color: '#fff', borderRadius: 8,
+                        fontSize: 10, fontWeight: 600, textAlign: 'center', padding: '6px 0',
+                      }}>
+                        Share feedback
+                      </div>
+                    </div>
+                  </div>
+                </Field>
+              </Card>
+            );
+          })()}
 
           {section === 'funnel' && (
             <>

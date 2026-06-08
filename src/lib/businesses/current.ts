@@ -26,6 +26,13 @@ const MODERN_SELECT = [
   'funnel_style',
   'funnel_heading',
   'funnel_sub',
+  'funnel_font',
+  'funnel_accent_color',
+  'funnel_bg_image_url',
+  'funnel_bg_blur',
+  'funnel_bg_dim',
+  'funnel_card_bg',
+  'funnel_preset_name',
   'created_at',
   'updated_at',
 ].join(', ');
@@ -123,6 +130,17 @@ export function normalizeBusiness(business: BusinessRow | null): BusinessRow | n
       : 'elegant',
     funnel_heading: typeof business.funnel_heading === 'string' ? business.funnel_heading : null,
     funnel_sub: typeof business.funnel_sub === 'string' ? business.funnel_sub : null,
+    funnel_font: typeof business.funnel_font === 'string' && business.funnel_font
+      ? business.funnel_font
+      : 'DM Sans',
+    funnel_accent_color: typeof business.funnel_accent_color === 'string' && business.funnel_accent_color
+      ? business.funnel_accent_color
+      : '#1a1a1a',
+    funnel_bg_image_url: typeof business.funnel_bg_image_url === 'string' ? business.funnel_bg_image_url : null,
+    funnel_bg_blur: typeof business.funnel_bg_blur === 'number' ? business.funnel_bg_blur : 0,
+    funnel_bg_dim: typeof business.funnel_bg_dim === 'number' ? business.funnel_bg_dim : 0,
+    funnel_card_bg: typeof business.funnel_card_bg === 'string' ? business.funnel_card_bg : null,
+    funnel_preset_name: typeof business.funnel_preset_name === 'string' ? business.funnel_preset_name : null,
   };
 }
 
