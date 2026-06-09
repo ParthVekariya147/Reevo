@@ -23,6 +23,16 @@ export default async function FunnelPage() {
     review_platforms: Array.isArray(currentBusiness.review_platforms) ? currentBusiness.review_platforms : [],
     review_keywords: (currentBusiness.review_keywords as string | null) ?? null,
     business_type: (currentBusiness.business_type as string | null) ?? null,
+    funnel_style:   String(currentBusiness.funnel_style   ?? 'minimal'),
+    funnel_heading: (currentBusiness.funnel_heading as string | null) ?? null,
+    funnel_sub:     (currentBusiness.funnel_sub     as string | null) ?? null,
+    funnel_font: String(currentBusiness.funnel_font ?? 'DM Sans'),
+    funnel_accent_color: String(currentBusiness.funnel_accent_color ?? '#1a1a1a'),
+    funnel_bg_image_url: (currentBusiness.funnel_bg_image_url as string | null) ?? null,
+    funnel_bg_blur: Number(currentBusiness.funnel_bg_blur ?? 0),
+    funnel_bg_dim: Number(currentBusiness.funnel_bg_dim ?? 0),
+    funnel_card_bg: (currentBusiness.funnel_card_bg as string | null) ?? null,
+    funnel_preset_name: (currentBusiness.funnel_preset_name as string | null) ?? null,
   } : null;
 
   return (

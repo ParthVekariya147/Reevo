@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { createClient } from '@/lib/supabase/client';
 import { Icon, Card, CardHeader, Btn, Badge, Stat, Chart, Field, Input, Select, Switch, Tabs, StarRating, Counter, pct } from '../ui';
 import { PLATFORM_DEFS, type ReviewPlatformEntry } from '@/lib/platforms';
 import { LogoUpload } from '../LogoUpload';
@@ -27,6 +28,13 @@ interface Business {
   funnel_style?:         string | null;
   funnel_heading?:       string | null;
   funnel_sub?:           string | null;
+  funnel_font?:          string | null;
+  funnel_accent_color?:  string | null;
+  funnel_bg_image_url?:  string | null;
+  funnel_bg_blur?:       number | null;
+  funnel_bg_dim?:        number | null;
+  funnel_card_bg?:       string | null;
+  funnel_preset_name?:   string | null;
 }
 
 interface UserInfo { id: string; email: string; full_name: string }
@@ -59,6 +67,29 @@ const LANGUAGES = [
   { value: 'ja', label: 'Japanese'   },
 ];
 
+const FUNNEL_STYLES = [
+  'minimal', 'glass', 'dark', 'luxury', 'neon', 'clay', 'elegant', 'vivid', 'playful',
+] as const;
+
+const FUNNEL_FONTS = [
+  { label: 'DM Sans',   value: 'DM Sans'            },
+  { label: 'Playfair',  value: 'Playfair Display'   },
+  { label: 'Syne',      value: 'Syne'               },
+  { label: 'Fraunces',  value: 'Fraunces'           },
+  { label: 'Cormorant', value: 'Cormorant Garamond' },
+];
+
+const ACCENT_PRESETS = [
+  { color: '#1a1a1a', title: 'Midnight'   },
+  { color: '#b5541c', title: 'Burnt Terra'},
+  { color: '#2d5a3d', title: 'Forest'     },
+  { color: '#9e3a5c', title: 'Rosé'       },
+  { color: '#1a3a6c', title: 'Navy'       },
+  { color: '#3d4a5c', title: 'Slate'      },
+  { color: '#8a6a1a', title: 'Gold'       },
+  { color: '#5a2d6e', title: 'Plum'       },
+];
+
 // ── sub-components ────────────────────────────────────────────
 
 function PageHeader({ title, sub, actions }: { title: string; sub?: string; actions?: React.ReactNode }) {
@@ -87,50 +118,75 @@ interface FunnelState {
 
 // ── funnel mockup — mirrors the real /r/[token] page ─────────
 
-function FunnelMockup({ brand, step = 'landing', funnel = {} }: {
+function FunnelMockup({ brand, step = 'landing', funnel = {}, appearance = {} }: {
   brand: { name: string; color: string; initials: string; logoUrl?: string | null; tagline?: string };
   step?: string;
   funnel?: FunnelState;
+  appearance?: { font?: string; accent?: string; bgImage?: string | null; bgBlur?: number; bgDim?: number };
 }) {
-  const color    = brand.color || '#6E5BFF';
+  const accent   = appearance.accent  ?? brand.color ?? '#1a1a1a';
+  const font     = appearance.font    ?? 'DM Sans';
+  const bgImage  = appearance.bgImage ?? null;
+  const bgBlur   = appearance.bgBlur  ?? 0;
+  const bgDim    = appearance.bgDim   ?? 0;
+
   const logoText = brand.initials || brand.name.split(' ').map(s => s[0]).slice(0, 2).join('').toUpperCase() || '??';
   const bizName  = brand.name || 'Your Business';
   const sampleReview = `${bizName} is a dream! The atmosphere, service, and quality made for an unforgettable experience. Highly recommend!`;
 
-  /* style variants — mirrors the real funnel styles */
-  type SV = { bg: string; fg: string; sub: string; divider: string; card: string; btnBg: string; btnFg: string; font: string };
+  useEffect(() => {
+    if (font === 'DM Sans') return;
+    const id = `gfont-${font.replace(/\s/g, '-')}`;
+    if (document.getElementById(id)) return;
+    const link = document.createElement('link');
+    link.id = id; link.rel = 'stylesheet';
+    link.href = `https://fonts.googleapis.com/css2?family=${font.replace(/ /g, '+')}:wght@300;400;500;600&display=swap`;
+    document.head.appendChild(link);
+  }, [font]);
+
+  type SV = { bg: string; fg: string; sub: string; divider: string; card: string; btnBg: string; btnFg: string };
   const styleMap: Record<string, SV> = {
-    elegant: { bg: '#FAFAF7', fg: '#0F0F12', sub: '#6B7280', divider: '#E5E7EB', card: 'rgba(255,255,255,0.6)', btnBg: color,   btnFg: '#fff', font: 'ui-serif, Georgia, serif' },
-    vivid:   { bg: `linear-gradient(160deg, ${color} 0%, #8B5CF6 100%)`, fg: '#fff', sub: 'rgba(255,255,255,0.75)', divider: 'rgba(255,255,255,0.2)', card: 'rgba(255,255,255,0.15)', btnBg: '#fff', btnFg: color, font: 'system-ui, sans-serif' },
-    minimal: { bg: '#FFFFFF', fg: '#000',    sub: '#6B7280', divider: '#E5E7EB', card: '#F9FAFB',               btnBg: '#000',  btnFg: '#fff', font: 'system-ui, sans-serif' },
-    playful: { bg: '#FFF6E8', fg: '#3F2E1B', sub: '#92745A', divider: '#F0DFC0', card: 'rgba(255,255,255,0.7)', btnBg: color,   btnFg: '#fff', font: 'system-ui, sans-serif' },
+    elegant: { bg: '#FAFAF7',                                              fg: '#0F0F12', sub: '#6B7280',               divider: '#E5E7EB',                card: 'rgba(255,255,255,0.6)',   btnBg: accent, btnFg: '#fff' },
+    vivid:   { bg: `linear-gradient(160deg, ${accent} 0%, #8B5CF6 100%)`, fg: '#fff',    sub: 'rgba(255,255,255,0.75)', divider: 'rgba(255,255,255,0.2)',  card: 'rgba(255,255,255,0.15)',  btnBg: '#fff', btnFg: accent },
+    minimal: { bg: '#FFFFFF',                                              fg: '#000',    sub: '#6B7280',                divider: '#E5E7EB',                card: 'rgba(255,255,255,0.97)',  btnBg: accent, btnFg: '#fff' },
+    playful: { bg: '#FFF6E8',                                              fg: '#3F2E1B', sub: '#92745A',                divider: '#F0DFC0',                card: 'rgba(255,255,255,0.7)',   btnBg: accent, btnFg: '#fff' },
+    glass:   { bg: 'rgba(120,120,160,0.25)',                               fg: '#fff',    sub: 'rgba(255,255,255,0.75)', divider: 'rgba(255,255,255,0.2)',  card: 'rgba(255,255,255,0.25)',  btnBg: accent, btnFg: '#fff' },
+    dark:    { bg: '#0a0a0a',                                              fg: '#f0ece6', sub: 'rgba(240,236,230,0.6)', divider: 'rgba(255,255,255,0.1)',   card: 'rgba(15,15,15,0.92)',     btnBg: accent, btnFg: '#fff' },
+    luxury:  { bg: '#f5f0e8',                                              fg: '#1a1208', sub: '#6b5a3a',               divider: 'rgba(180,150,80,0.25)',   card: 'rgba(250,246,238,0.97)', btnBg: accent, btnFg: '#fff' },
+    neon:    { bg: '#050514',                                              fg: '#e0fff0', sub: 'rgba(224,255,240,0.6)', divider: 'rgba(100,255,180,0.25)',  card: 'rgba(5,5,20,0.92)',      btnBg: accent, btnFg: '#000' },
+    clay:    { bg: '#f0e8d8',                                              fg: '#3a2a18', sub: '#7a5a3a',               divider: 'rgba(180,140,100,0.2)',   card: 'rgba(245,235,220,0.96)', btnBg: accent, btnFg: '#fff' },
   };
   const sv = styleMap[funnel.style ?? 'elegant'] ?? styleMap.elegant;
-
-  /* shared header — same on every step */
-  const Header = (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '20px 20px 0', gap: 6, textAlign: 'center' }}>
-      <div style={{ width: 52, height: 52, borderRadius: 14, background: color, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: 15, overflow: 'hidden', flexShrink: 0 }}>
-        {brand.logoUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={brand.logoUrl} alt={bizName} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-        ) : logoText}
-      </div>
-      <div style={{ fontWeight: 700, fontSize: 14, color: sv.fg }}>{bizName}</div>
-      {brand.tagline && (
-        <div style={{ fontSize: 10, color: sv.sub, lineHeight: 1.4, maxWidth: 200 }}>{brand.tagline}</div>
-      )}
-      <div style={{ width: '100%', height: 1, background: sv.divider, marginTop: 8 }} />
-    </div>
-  );
+  const fontFamily = font !== 'DM Sans' ? `'${font}', system-ui, sans-serif` : 'system-ui, sans-serif';
 
   return (
-    <div className="lp-funnel" style={{ background: sv.bg, color: sv.fg, fontFamily: sv.font, padding: '36px 0 0' }}>
-      {Header}
+    <div className="lp-funnel" style={{
+      background: sv.bg, color: sv.fg, fontFamily, padding: '0',
+      position: 'relative', overflow: 'hidden',
+      ...(bgImage ? { backgroundImage: `url('${bgImage}')`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}),
+    }}>
+      {bgBlur > 0 && (
+        <div style={{ position: 'absolute', inset: 0, backdropFilter: `blur(${bgBlur}px)`, WebkitBackdropFilter: `blur(${bgBlur}px)`, pointerEvents: 'none', zIndex: 1 } as React.CSSProperties} />
+      )}
+      {bgDim > 0 && (
+        <div style={{ position: 'absolute', inset: 0, background: `rgba(0,0,0,${bgDim / 100})`, pointerEvents: 'none', zIndex: 1 }} />
+      )}
 
-      <div className="lp-funnel-body">
+      {/* Header */}
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '20px 20px 0', gap: 6, textAlign: 'center', position: 'relative', zIndex: 2 }}>
+        <div style={{ width: 52, height: 52, borderRadius: 14, background: accent, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: 15, overflow: 'hidden', flexShrink: 0 }}>
+          {brand.logoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={brand.logoUrl} alt={bizName} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+          ) : logoText}
+        </div>
+        <div style={{ fontWeight: 700, fontSize: 14, color: sv.fg }}>{bizName}</div>
+        {brand.tagline && <div style={{ fontSize: 10, color: sv.sub, lineHeight: 1.4, maxWidth: 200 }}>{brand.tagline}</div>}
+        <div style={{ width: '100%', height: 1, background: sv.divider, marginTop: 8 }} />
+      </div>
 
-        {/* LANDING — "How was your experience?" */}
+      <div className="lp-funnel-body" style={{ position: 'relative', zIndex: 2 }}>
+
         {step === 'landing' && (
           <>
             <div style={{ fontWeight: 700, fontSize: 17, lineHeight: 1.25, textAlign: 'center', marginTop: 4, color: sv.fg }}>
@@ -148,12 +204,9 @@ function FunnelMockup({ brand, step = 'landing', funnel = {} }: {
           </>
         )}
 
-        {/* RATE — star picker */}
         {step === 'rate' && (
           <>
-            <div style={{ fontWeight: 700, fontSize: 16, textAlign: 'center', marginTop: 4, color: sv.fg }}>
-              Tap a star to rate your visit
-            </div>
+            <div style={{ fontWeight: 700, fontSize: 16, textAlign: 'center', marginTop: 4, color: sv.fg }}>Tap a star to rate your visit</div>
             <div style={{ display: 'flex', justifyContent: 'center', gap: 6, margin: '10px 0' }}>
               {[1,2,3,4,5].map(i => (
                 <svg key={i} width="28" height="28" viewBox="0 0 48 48" fill="none">
@@ -165,25 +218,19 @@ function FunnelMockup({ brand, step = 'landing', funnel = {} }: {
           </>
         )}
 
-        {/* GENERATE — AI spinning */}
         {step === 'generate' && (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12, flex: 1, padding: '8px 0' }}>
             <div style={{ width: 36, height: 36, border: `3px solid ${sv.btnBg}40`, borderTopColor: sv.btnBg, borderRadius: '50%', animation: 'lp-spin 0.9s linear infinite' }} />
             <div style={{ fontWeight: 700, fontSize: 15, textAlign: 'center', color: sv.fg }}>Crafting your review…</div>
-            <div style={{ fontSize: 11, color: sv.sub, textAlign: 'center', lineHeight: 1.5 }}>
-              Our AI is writing a personalised draft for you…
-            </div>
+            <div style={{ fontSize: 11, color: sv.sub, textAlign: 'center', lineHeight: 1.5 }}>Our AI is writing a personalised draft for you…</div>
           </div>
         )}
 
-        {/* REDIRECT — review draft + actions */}
         {step === 'redirect' && (
           <>
             <div style={{ fontWeight: 700, fontSize: 15, textAlign: 'center', marginTop: 4, color: sv.fg }}>Here&apos;s your review draft</div>
             <div style={{ fontSize: 10, color: sv.sub, textAlign: 'center' }}>Review, edit, then post it — takes 10 seconds!</div>
-            <div style={{ background: sv.card, border: `1px solid ${sv.divider}`, borderRadius: 9, padding: '9px 10px', fontSize: 11, lineHeight: 1.5, color: sv.fg }}>
-              {sampleReview}
-            </div>
+            <div style={{ background: sv.card, border: `1px solid ${sv.divider}`, borderRadius: 9, padding: '9px 10px', fontSize: 11, lineHeight: 1.5, color: sv.fg }}>{sampleReview}</div>
             <div style={{ display: 'flex', gap: 6 }}>
               <div style={{ flex: 1, height: 32, borderRadius: 8, border: `1px solid ${sv.divider}`, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5, fontSize: 11, fontWeight: 500, color: sv.fg }}>
                 <svg width="11" height="11" viewBox="0 0 15 15" fill="none"><path d="M13 7.5A5.5 5.5 0 112.5 4.5M2.5 1.5v3h3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
@@ -219,10 +266,42 @@ export default function ScreenFunnel({ initialBusiness }: Props) {
   const [logoUrl,    setLogoUrl]    = useState<string | null>(initialBusiness?.logo_url ?? null);
   const [logoToast,  setLogoToast]  = useState<'uploaded' | 'removed' | null>(null);
 
+  // Appearance state
+  const [funnelFont,    setFunnelFont]    = useState(initialBusiness?.funnel_font         ?? 'DM Sans');
+  const [funnelAccent,  setFunnelAccent]  = useState(initialBusiness?.funnel_accent_color ?? '#1a1a1a');
+  const [funnelBgUrl,   setFunnelBgUrl]   = useState<string | null>(initialBusiness?.funnel_bg_image_url ?? null);
+  const [funnelBgBlur,  setFunnelBgBlur]  = useState(initialBusiness?.funnel_bg_blur ?? 0);
+  const [funnelBgDim,   setFunnelBgDim]   = useState(initialBusiness?.funnel_bg_dim  ?? 0);
+  const [bgUploading,   setBgUploading]   = useState(false);
+  const [bgUploadError, setBgUploadError] = useState<string | null>(null);
+  const bgInputRef = useRef<HTMLInputElement>(null);
+
   function handleLogoUpdate(url: string | null) {
     setLogoUrl(url);
     setLogoToast(url ? 'uploaded' : 'removed');
     setTimeout(() => setLogoToast(null), 2500);
+  }
+
+  async function handleBgUpload(file: File) {
+    if (file.size > 2 * 1024 * 1024) { setBgUploadError('Image must be under 2 MB'); return; }
+    setBgUploading(true);
+    setBgUploadError(null);
+    try {
+      const supabase = createClient();
+      const ext  = file.name.split('.').pop() ?? 'jpg';
+      const path = `${initialBusiness?.id ?? 'anon'}/bg.${ext}`;
+      const { error } = await supabase.storage
+        .from('funnel-backgrounds')
+        .upload(path, file, { upsert: true, contentType: file.type });
+      if (error) throw error;
+      const { data } = supabase.storage.from('funnel-backgrounds').getPublicUrl(path);
+      setFunnelBgUrl(data.publicUrl);
+      setSaveState('idle');
+    } catch {
+      setBgUploadError('Upload failed, please try again');
+    } finally {
+      setBgUploading(false);
+    }
   }
 
   const { data: overview } = useQuery<{
@@ -334,8 +413,13 @@ export default function ScreenFunnel({ initialBusiness }: Props) {
       review_keywords:       talkingPoints.join(', ') || null,
       google_link:           googleUrl || null,
       funnel_style:          funnel.style,
-      funnel_heading:        funnel.heading || null,
-      funnel_sub:            funnel.sub     || null,
+      funnel_heading:        funnel.heading     || null,
+      funnel_sub:            funnel.sub         || null,
+      funnel_font:           funnelFont,
+      funnel_accent_color:   funnelAccent,
+      funnel_bg_image_url:   funnelBgUrl        || null,
+      funnel_bg_blur:        funnelBgBlur,
+      funnel_bg_dim:         funnelBgDim,
     });
     setSaveState(ok ? 'saved' : 'error');
     if (ok) setTimeout(() => setSaveState('idle'), 2500);
@@ -404,21 +488,96 @@ export default function ScreenFunnel({ initialBusiness }: Props) {
 
           {tab === 'design' && (
             <div className="lp-stack" style={{ marginTop: 16 }}>
-              <Field label="Funnel style">
-                <div className="lp-grid lp-grid-4" style={{ gap: 10 }}>
-                  {['elegant','vivid','minimal','playful'].map(s => (
-                    <button key={s} onClick={() => setFunnelField('style', s)}
-                            className={`lp-funnel-pick ${funnel.style === s ? 'is-on' : ''}`} style={{ padding: 10 }}>
-                      <div className={`lp-funnel-mini lp-funnel-mini-${s}`} style={{ height: 80 }}>
-                        <div className="lp-funnel-mini-logo"/>
-                        <div className="lp-funnel-mini-bar"/>
-                        <div className="lp-funnel-mini-btn"/>
-                      </div>
-                      <div className="lp-pick-title" style={{ marginTop: 8, fontSize: 12, textTransform: 'capitalize' }}>{s}</div>
-                    </button>
+
+              {/* Style pills */}
+              <Field label="Style">
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {FUNNEL_STYLES.map(s => (
+                    <button key={s} onClick={() => { setFunnelField('style', s); setSaveState('idle'); }} style={{
+                      padding: '4px 12px', borderRadius: 20, fontSize: 12, cursor: 'pointer', textTransform: 'capitalize',
+                      border: funnel.style === s ? '1.5px solid var(--lp-fg)' : '1px solid var(--lp-border)',
+                      background: funnel.style === s ? 'var(--lp-fg)' : 'var(--lp-surface)',
+                      color: funnel.style === s ? 'var(--lp-bg)' : 'var(--lp-fg)',
+                      fontWeight: funnel.style === s ? 600 : 400, transition: 'all .15s',
+                    }}>{s}</button>
                   ))}
                 </div>
               </Field>
+
+              {/* Font pills */}
+              <Field label="Font">
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                  {FUNNEL_FONTS.map(f => (
+                    <button key={f.value} onClick={() => { setFunnelFont(f.value); setSaveState('idle'); }} style={{
+                      padding: '4px 12px', borderRadius: 20, fontSize: 12, cursor: 'pointer',
+                      border: funnelFont === f.value ? '1.5px solid var(--lp-fg)' : '1px solid var(--lp-border)',
+                      background: funnelFont === f.value ? 'var(--lp-fg)' : 'var(--lp-surface)',
+                      color: funnelFont === f.value ? 'var(--lp-bg)' : 'var(--lp-fg)',
+                      fontWeight: funnelFont === f.value ? 600 : 400, transition: 'all .15s',
+                    }}>{f.label}</button>
+                  ))}
+                </div>
+              </Field>
+
+              {/* Accent color */}
+              <Field label="Accent color">
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
+                  {ACCENT_PRESETS.map(p => (
+                    <button key={p.color} title={p.title} onClick={() => { setFunnelAccent(p.color); setSaveState('idle'); }} style={{
+                      width: 24, height: 24, borderRadius: '50%', cursor: 'pointer', background: p.color,
+                      border: funnelAccent === p.color ? '2.5px solid var(--lp-fg)' : '2px solid transparent',
+                      outline: funnelAccent === p.color ? '1.5px solid var(--lp-bg)' : 'none',
+                      transition: 'all .15s',
+                    }} />
+                  ))}
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', marginLeft: 4 }}>
+                    <input type="color" value={funnelAccent}
+                      onChange={e => { setFunnelAccent(e.target.value); setSaveState('idle'); }}
+                      style={{ width: 24, height: 24, border: 'none', padding: 0, borderRadius: 4, cursor: 'pointer', background: 'none' }} />
+                    <span style={{ fontSize: 11, color: 'var(--lp-fg-muted)' }}>Custom</span>
+                  </label>
+                </div>
+              </Field>
+
+              {/* Background image */}
+              <Field label="Background image">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {funnelBgUrl && (
+                    <div style={{ position: 'relative', width: 80, height: 56, borderRadius: 8, overflow: 'hidden', border: '1px solid var(--lp-border)' }}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={funnelBgUrl} alt="BG" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      <button onClick={() => { setFunnelBgUrl(null); setSaveState('idle'); }} style={{
+                        position: 'absolute', top: 2, right: 2, width: 18, height: 18, borderRadius: '50%',
+                        border: 'none', background: 'rgba(0,0,0,0.6)', color: '#fff', cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, lineHeight: 1,
+                      }}>×</button>
+                    </div>
+                  )}
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <input ref={bgInputRef} type="file" accept="image/*" style={{ display: 'none' }}
+                      onChange={e => { const f = e.target.files?.[0]; if (f) handleBgUpload(f); e.target.value = ''; }} />
+                    <Btn variant="ghost" size="sm" icon="upload" onClick={() => bgInputRef.current?.click()}>
+                      {bgUploading ? 'Uploading…' : funnelBgUrl ? 'Replace image' : 'Upload image'}
+                    </Btn>
+                    {bgUploadError && <span style={{ fontSize: 11, color: '#ef4444' }}>{bgUploadError}</span>}
+                  </div>
+                </div>
+              </Field>
+
+              {/* Blur */}
+              <Field label="Background blur" hint={`${funnelBgBlur}px`}>
+                <input type="range" min={0} max={20} step={1} value={funnelBgBlur}
+                  onChange={e => { setFunnelBgBlur(Number(e.target.value)); setSaveState('idle'); }}
+                  style={{ width: '100%', accentColor: 'var(--lp-fg)' }} />
+              </Field>
+
+              {/* Dim */}
+              <Field label="Background dim" hint={`${funnelBgDim}%`}>
+                <input type="range" min={0} max={80} step={5} value={funnelBgDim}
+                  onChange={e => { setFunnelBgDim(Number(e.target.value)); setSaveState('idle'); }}
+                  style={{ width: '100%', accentColor: 'var(--lp-fg)' }} />
+              </Field>
+
               <div className="lp-grid lp-grid-2" style={{ gap: 14 }}>
                 <Field label="Headline">
                   <Input value={funnel.heading} onChange={e => setFunnelField('heading', e.target.value)} />
@@ -663,7 +822,12 @@ export default function ScreenFunnel({ initialBusiness }: Props) {
               }
             />
             <div className="lp-phone" style={{ margin: '0 auto' }}>
-              <FunnelMockup brand={brand} step={simStep} funnel={{ ...funnel, language, threshold }} />
+              <FunnelMockup
+                brand={brand}
+                step={simStep}
+                funnel={{ ...funnel, language, threshold }}
+                appearance={{ font: funnelFont, accent: funnelAccent, bgImage: funnelBgUrl, bgBlur: funnelBgBlur, bgDim: funnelBgDim }}
+              />
             </div>
             <div className="lp-flex" style={{ gap: 6, marginTop: 14, justifyContent: 'center' }}>
               {['landing','rate','generate','redirect'].map(s => (

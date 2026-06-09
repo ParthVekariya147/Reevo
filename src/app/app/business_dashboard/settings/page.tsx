@@ -23,7 +23,9 @@ export default async function SettingsPage() {
       ? (currentBusiness.review_length_preference as string[])
       : ['short', 'medium'],
     instagram_handle: (currentBusiness.instagram_handle as string | null) ?? null,
-    funnel_style: String(currentBusiness.funnel_style ?? 'minimal'),
+    funnel_style:   String(currentBusiness.funnel_style   ?? 'minimal'),
+    funnel_heading: (currentBusiness.funnel_heading as string | null) ?? null,
+    funnel_sub:     (currentBusiness.funnel_sub     as string | null) ?? null,
     funnel_font: String(currentBusiness.funnel_font ?? 'DM Sans'),
     funnel_accent_color: String(currentBusiness.funnel_accent_color ?? '#1a1a1a'),
     funnel_bg_image_url: (currentBusiness.funnel_bg_image_url as string | null) ?? null,
