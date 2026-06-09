@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Icon, Badge, Field, Input } from '../ui';
 import { PLATFORM_DEFS, type ReviewPlatformEntry } from '@/lib/platforms';
 import { isValidGoogleReviewUrl } from '@/lib/validation/urls';
+import { FunnelMockup } from '../FunnelMockup';
 
 // ── types ─────────────────────────────────────────────────────
 
@@ -169,28 +170,6 @@ async function upsertBusiness(payload: Record<string, unknown>): Promise<boolean
     body:    JSON.stringify(payload),
   });
   return res.ok;
-}
-
-// ── funnel preview ────────────────────────────────────────────
-
-function FunnelPreview({ name, color, initials }: { name: string; color: string; initials: string }) {
-  const logoText = initials || autoInitials(name) || '??';
-  return (
-    <div style={{ background: '#FAFAF7', borderRadius: 16, overflow: 'hidden', border: '1px solid rgba(0,0,0,0.06)', fontFamily: 'ui-serif, Georgia, serif' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '14px 18px', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
-        <div style={{ width: 36, height: 36, borderRadius: 10, background: color, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: 13, flexShrink: 0 }}>
-          {logoText}
-        </div>
-        <div style={{ fontWeight: 600, fontSize: 14, color: '#0F0F12' }}>{name || 'Your Business'}</div>
-      </div>
-      <div style={{ padding: '24px 18px', textAlign: 'center' }}>
-        <div style={{ fontSize: 17, fontWeight: 600, color: '#0F0F12', marginBottom: 6 }}>Thanks for visiting!</div>
-        <div style={{ fontSize: 13, color: '#6B7280', marginBottom: 20 }}>We&apos;d love to hear about your experience.</div>
-        <div style={{ fontSize: 26, letterSpacing: 4, marginBottom: 20, color: '#D1D5DB' }}>★★★★★</div>
-        <div style={{ padding: '12px 20px', borderRadius: 10, background: color, color: '#fff', fontWeight: 600, fontSize: 14 }}>Rate your visit</div>
-      </div>
-    </div>
-  );
 }
 
 // ── main component ────────────────────────────────────────────
@@ -606,7 +585,13 @@ export default function ScreenOnboarding({ user, existingBusiness, initialStep =
               {/* Mini preview */}
               <div>
                 <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--lp-fg-muted)', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Funnel preview</div>
-                <FunnelPreview name={form.name} color={form.color} initials={form.initials} />
+                <div className="lp-phone" style={{ margin: '0 auto' }}>
+                  <FunnelMockup
+                    brand={{ name: form.name, color: form.color, initials: form.initials || autoInitials(form.name) }}
+                    funnel={{ style: 'elegant' }}
+                    appearance={{ accent: form.color }}
+                  />
+                </div>
                 {existingBusiness && (
                   <div style={{ marginTop: 12, padding: '10px 14px', background: 'rgba(16,185,129,0.08)', borderRadius: 8, border: '1px solid rgba(16,185,129,0.2)', display: 'flex', alignItems: 'center', gap: 8 }}>
                     <Icon name="check" size={14} style={{ color: 'var(--lp-success)' }} />
@@ -821,7 +806,13 @@ export default function ScreenOnboarding({ user, existingBusiness, initialStep =
               {/* Live preview */}
               <div>
                 <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--lp-fg-muted)', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Live preview</div>
-                <FunnelPreview name={form.name} color={form.color} initials={form.initials} />
+                <div className="lp-phone" style={{ margin: '0 auto' }}>
+                  <FunnelMockup
+                    brand={{ name: form.name, color: form.color, initials: form.initials || autoInitials(form.name) }}
+                    funnel={{ style: 'elegant' }}
+                    appearance={{ accent: form.color }}
+                  />
+                </div>
                 <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--lp-fg-muted)' }}>
                   <div style={{ width: 10, height: 10, borderRadius: '50%', background: form.color }} />
                   Selected: {form.color}
@@ -987,7 +978,13 @@ export default function ScreenOnboarding({ user, existingBusiness, initialStep =
               {/* Funnel preview */}
               <div>
                 <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--lp-fg-muted)', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Funnel preview</div>
-                <FunnelPreview name={form.name} color={form.color} initials={form.initials} />
+                <div className="lp-phone" style={{ margin: '0 auto' }}>
+                  <FunnelMockup
+                    brand={{ name: form.name, color: form.color, initials: form.initials || autoInitials(form.name) }}
+                    funnel={{ style: 'elegant' }}
+                    appearance={{ accent: form.color }}
+                  />
+                </div>
               </div>
             </div>
           )}

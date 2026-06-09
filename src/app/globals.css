@@ -1496,22 +1496,24 @@ button { font-family: inherit; }
   content: '';
   position: absolute;
   inset: 0;
-  background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(255,255,255,0.18) 0%, transparent 70%);
+  background: radial-gradient(ellipse 80% 55% at 50% -5%, var(--rv-glow, rgba(255,255,255,0.18)) 0%, transparent 70%);
   pointer-events: none;
+  z-index: 0;
 }
 
 .rv-funnel-root::after {
   content: '';
   position: absolute;
-  bottom: -120px;
+  bottom: -140px;
   left: 50%;
   transform: translateX(-50%);
-  width: 600px;
-  height: 600px;
+  width: 520px;
+  height: 520px;
   border-radius: 50%;
-  background: rgba(0,0,0,0.12);
-  filter: blur(80px);
+  background: var(--rv-blob, rgba(0,0,0,0.12));
+  filter: blur(90px);
   pointer-events: none;
+  z-index: 0;
 }
 
 .rv-funnel-card {

@@ -244,6 +244,17 @@ export default function FunnelFlow({
   };
   const sv = styleMap[business?.funnelStyle ?? 'elegant'] ?? styleMap.elegant;
 
+  // Dark-background styles get an accent-colour glow; light styles keep white glow.
+  const funnelStyle = business?.funnelStyle ?? 'elegant';
+  const isDarkBg = ['dark', 'neon', 'glass', 'vivid'].includes(funnelStyle);
+  // Convert hex accent to rgba for the glow variable
+  const hex = accent.replace('#', '');
+  const r = parseInt(hex.slice(0, 2), 16) || 0;
+  const g = parseInt(hex.slice(2, 4), 16) || 0;
+  const b = parseInt(hex.slice(4, 6), 16) || 0;
+  const rvGlow  = isDarkBg ? `rgba(${r},${g},${b},0.28)` : 'rgba(255,255,255,0.18)';
+  const rvBlob  = isDarkBg ? `rgba(${r},${g},${b},0.18)` : 'rgba(0,0,0,0.12)';
+
   const showDemoLimit = demoLimit?.reached || runtimeDemoLimit !== null;
   const demoReason    = demoLimit?.reason ?? runtimeDemoLimit?.reason ?? '';
 
@@ -454,7 +465,7 @@ export default function FunnelFlow({
     return (
       <div
         className="rv-funnel-root"
-        style={{ '--rv-brand': accent, background: sv.bg, fontFamily: sv.font } as React.CSSProperties}
+        style={{ '--rv-brand': accent, '--rv-glow': rvGlow, '--rv-blob': rvBlob, background: sv.bg, fontFamily: sv.font } as React.CSSProperties}
       >
         <div className="rv-funnel-card" style={{ background: sv.card, fontFamily: `'${font}', sans-serif` }}>
           <div className="rv-funnel-header">
@@ -514,6 +525,8 @@ export default function FunnelFlow({
       className="rv-funnel-root"
       style={{
         '--rv-brand': accent,
+        '--rv-glow':  rvGlow,
+        '--rv-blob':  rvBlob,
         background: sv.bg,
         fontFamily: sv.font,
         position: 'relative',
@@ -588,11 +601,11 @@ export default function FunnelFlow({
                     onMouseLeave={() => setHovered(0)}
                     aria-label={`${s} star`}
                   >
-                    <StarIcon filled={s <= (hovered || rating)} color={brand} />
+                    <StarIcon filled={s <= (hovered || rating)} color={accent} />
                   </button>
                 ))}
               </div>
-              <div className="rv-star-label" style={{ color: hovered || rating ? brand : sv.sub }}>
+              <div className="rv-star-label" style={{ color: hovered || rating ? accent : sv.sub }}>
                 {hovered
                   ? t(lang, 'starLabels').split(',')[hovered - 1] ?? t(lang, 'starLabels').split(',')[4]
                   : rating
