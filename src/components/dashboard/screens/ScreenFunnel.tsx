@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/client';
 import { Icon, Card, CardHeader, Btn, Badge, Stat, Chart, Field, Input, Select, Switch, Tabs, StarRating, Counter, pct } from '../ui';
 import { PLATFORM_DEFS, type ReviewPlatformEntry } from '@/lib/platforms';
 import { LogoUpload } from '../LogoUpload';
-import { FunnelMockup, type FunnelState } from '../FunnelMockup';
+import { FunnelMockup } from '../FunnelMockup';
 
 const fetcher = (url: string) => fetch(url).then(r => r.json());
 
