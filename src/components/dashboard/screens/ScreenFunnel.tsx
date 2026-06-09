@@ -90,6 +90,18 @@ const ACCENT_PRESETS = [
   { color: '#5a2d6e', title: 'Plum'       },
 ];
 
+// Curated bundles — one click sets style + font + accent together
+const STYLE_COMBOS = [
+  { name: 'Midnight Minimal', style: 'minimal', font: 'DM Sans',            accent: '#1a1a1a', desc: 'Clean & timeless'      },
+  { name: 'Warm Clay',        style: 'clay',    font: 'Fraunces',            accent: '#b5541c', desc: 'Rustic & cosy'         },
+  { name: 'Forest Glass',     style: 'glass',   font: 'Syne',               accent: '#2d5a3d', desc: 'Fresh & airy'          },
+  { name: 'Rose Luxury',      style: 'luxury',  font: 'Cormorant Garamond',  accent: '#9e3a5c', desc: 'Elegant & romantic'    },
+  { name: 'Navy Dark',        style: 'dark',    font: 'Playfair Display',    accent: '#1a3a6c', desc: 'Bold & professional'   },
+  { name: 'Gold Elegant',     style: 'elegant', font: 'Cormorant Garamond',  accent: '#8a6a1a', desc: 'Sophisticated & warm'  },
+  { name: 'Neon Slate',       style: 'neon',    font: 'Syne',               accent: '#3d4a5c', desc: 'Electric & modern'     },
+  { name: 'Plum Playful',     style: 'playful', font: 'Fraunces',            accent: '#5a2d6e', desc: 'Fun & energetic'       },
+];
+
 // ── sub-components ────────────────────────────────────────────
 
 function PageHeader({ title, sub, actions }: { title: string; sub?: string; actions?: React.ReactNode }) {
@@ -391,6 +403,23 @@ export default function ScreenFunnel({ initialBusiness }: Props) {
 
   const setFunnelField = (k: string, v: string | number) => setFunnel(f => ({ ...f, [k]: v }));
 
+  function applyCombo(combo: typeof STYLE_COMBOS[number]) {
+    setFunnel(f => ({ ...f, style: combo.style }));
+    setFunnelFont(combo.font);
+    setFunnelAccent(combo.accent);
+    setSaveState('idle');
+  }
+
+  function randomize() {
+    const style  = FUNNEL_STYLES[Math.floor(Math.random() * FUNNEL_STYLES.length)];
+    const font   = FUNNEL_FONTS[Math.floor(Math.random() * FUNNEL_FONTS.length)].value;
+    const accent = ACCENT_PRESETS[Math.floor(Math.random() * ACCENT_PRESETS.length)].color;
+    setFunnel(f => ({ ...f, style }));
+    setFunnelFont(font);
+    setFunnelAccent(accent);
+    setSaveState('idle');
+  }
+
   // Ensure URLs have a protocol so sanitizeUrl on the server doesn't strip them.
   // 'www.google.com' → 'https://www.google.com', already-valid URLs are untouched.
   function normalizeUrl(u: string): string {
@@ -488,6 +517,56 @@ export default function ScreenFunnel({ initialBusiness }: Props) {
 
           {tab === 'design' && (
             <div className="lp-stack" style={{ marginTop: 16 }}>
+
+              {/* Quick combos */}
+              <Field label="Quick combos">
+                <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 4 }}>
+                  {STYLE_COMBOS.map(combo => {
+                    const active =
+                      funnel.style === combo.style &&
+                      funnelFont   === combo.font  &&
+                      funnelAccent === combo.accent;
+                    return (
+                      <button
+                        key={combo.name}
+                        onClick={() => applyCombo(combo)}
+                        style={{
+                          flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 4,
+                          padding: '8px 10px', borderRadius: 10, cursor: 'pointer', textAlign: 'left',
+                          minWidth: 100,
+                          border: active ? '1.5px solid var(--lp-fg)' : '1px solid var(--lp-border)',
+                          background: active ? 'var(--lp-fg)' : 'var(--lp-surface)',
+                          color: active ? 'var(--lp-bg)' : 'var(--lp-fg)',
+                          transition: 'all .15s',
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <div style={{ width: 14, height: 14, borderRadius: '50%', background: combo.accent, flexShrink: 0, border: '1.5px solid rgba(0,0,0,0.12)' }} />
+                          <span style={{ fontSize: 11, fontWeight: 600 }}>{combo.name}</span>
+                        </div>
+                        <span style={{ fontSize: 10, opacity: 0.6 }}>{combo.desc}</span>
+                        <span style={{ fontSize: 9, opacity: 0.45, textTransform: 'capitalize' }}>
+                          {combo.style} · {combo.font.split(' ')[0]}
+                        </span>
+                      </button>
+                    );
+                  })}
+                  <button
+                    onClick={randomize}
+                    style={{
+                      flexShrink: 0, display: 'flex', flexDirection: 'column', alignItems: 'center',
+                      justifyContent: 'center', gap: 4, padding: '8px 14px', borderRadius: 10,
+                      cursor: 'pointer', minWidth: 72,
+                      border: '1px dashed var(--lp-border)',
+                      background: 'transparent', color: 'var(--lp-fg)',
+                      transition: 'all .15s',
+                    }}
+                  >
+                    <span style={{ fontSize: 16 }}>✦</span>
+                    <span style={{ fontSize: 10, fontWeight: 500 }}>Randomize</span>
+                  </button>
+                </div>
+              </Field>
 
               {/* Style pills */}
               <Field label="Style">
