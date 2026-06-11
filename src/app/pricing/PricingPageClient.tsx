@@ -7,15 +7,16 @@ import Footer from "@/components/layout/Footer";
 
 /* ── Public plan shape (matches /api/public/plans) ── */
 export interface PlanApiRow {
-  plan:            string;
-  amount_cents:    number;
-  currency:        string;
-  label:           string;
-  trial_days:      number | null;
-  review_limit:    number;
-  scan_limit:      number;
-  campaign_limit:  number;
-  is_popular:      boolean;
+  plan:                string;
+  amount_cents:        number;
+  amount_cents_yearly: number | null;
+  currency:            string;
+  label:               string;
+  trial_days:          number | null;
+  review_limit:        number;
+  scan_limit:          number;
+  campaign_limit:      number;
+  is_popular:          boolean;
 }
 
 /* ── Icons ── */
@@ -37,90 +38,110 @@ const ArrowIcon = () => (
 
 /* ── Static display metadata per DB plan ID ── */
 const PLAN_META: Record<string, { displayName: string; sub: string; cta: string }> = {
-  free:       { displayName: "Starter",  sub: "For trying Reevo with one location.",                      cta: "Start free"        },
-  pro:        { displayName: "Growth",   sub: "For single-location businesses serious about reviews.",    cta: "Start 14-day trial" },
-  enterprise: { displayName: "Business", sub: "For multi-location and franchise teams.",                  cta: "Start 14-day trial" },
+  free:       { displayName: "Free",       sub: "Try Reevo free for 14 days. No credit card required.",  cta: "Start free trial"  },
+  starter:    { displayName: "Starter",    sub: "For single-location businesses serious about reviews.", cta: "Get started"       },
+  growth:     { displayName: "Growth",     sub: "Best for growing cafes with 2–5 locations.",            cta: "Get started"       },
+  enterprise: { displayName: "Enterprise", sub: "For franchises and multi-location chains.",              cta: "Get started"       },
 };
 
 /* ── Static feature bullets per DB plan ID ── */
 const PLAN_FEATURES: Record<string, [string, boolean][]> = {
   free: [
-    ["1 location",              true ],
-    ["Up to 30 reviews / month",true ],
-    ["1 static QR code",        true ],
-    ["Basic AI suggestions",    true ],
-    ["Standard analytics",      true ],
-    ["Custom branding",         false],
-    ["Multi-location",          false],
-    ["Priority support",        false],
+    ["1 location",                     true ],
+    ["20 reviews / month",             true ],
+    ["20 scans / month",               true ],
+    ["1 QR code",                      true ],
+    ["Basic AI review suggestions",    true ],
+    ["Standard analytics",             true ],
+    ["14-day full access, no card",    true ],
+    ["Auto-reply to reviews",          false],
+    ["Custom branding",                false],
+    ["Multi-location",                 false],
+    ["Priority support",               false],
   ],
-  pro: [
-    ["Up to 5 locations",          true ],
-    ["Unlimited reviews",          true ],
-    ["Dynamic QR codes",           true ],
-    ["GPT-4 review suggestions",   true ],
-    ["Advanced funnel analytics",  true ],
-    ["Custom branding & domain",   true ],
-    ["Multi-staff accounts",       true ],
-    ["Priority support",           false],
+  starter: [
+    ["1 location",                     true ],
+    ["200 reviews / month",            true ],
+    ["200 scans / month",              true ],
+    ["Dynamic QR codes",               true ],
+    ["AI review suggestions",          true ],
+    ["Standard analytics",             true ],
+    ["Custom branding",                true ],
+    ["Auto-reply to reviews",          false],
+    ["Multi-location",                 false],
+    ["Priority support",               false],
+  ],
+  growth: [
+    ["Up to 5 locations",              true ],
+    ["500 reviews / month",            true ],
+    ["500 scans / month",              true ],
+    ["Dynamic QR codes",               true ],
+    ["GPT-4 review suggestions",       true ],
+    ["Advanced funnel analytics",      true ],
+    ["Custom branding & domain",       true ],
+    ["Auto-reply to reviews",          true ],
+    ["Multi-staff accounts",           true ],
+    ["Priority support",               false],
   ],
   enterprise: [
-    ["Unlimited locations",       true],
-    ["Unlimited reviews",         true],
-    ["Dynamic + printed QR kit",  true],
-    ["AI suggestions + tone tuning", true],
-    ["Cohort & device analytics", true],
-    ["Custom branding & domain",  true],
-    ["SSO + role-based access",   true],
-    ["Priority + dedicated CSM",  true],
+    ["Unlimited locations",            true ],
+    ["Unlimited reviews",              true ],
+    ["Unlimited scans",                true ],
+    ["Dynamic QR codes",               true ],
+    ["AI suggestions + tone tuning",   true ],
+    ["Cohort & device analytics",      true ],
+    ["Custom branding & domain",       true ],
+    ["Auto-reply to reviews",          true ],
+    ["SSO + role-based access",        true ],
+    ["Priority + dedicated CSM",       true ],
   ],
 };
 
 // Plans shown on the marketing page — in display order
-const MARKETING_PLAN_IDS = ["free", "pro", "enterprise"];
+const MARKETING_PLAN_IDS = ["free", "starter", "growth", "enterprise"];
 
 /* ── Full comparison table (static marketing copy) ── */
 const COMPARISON_GROUPS = [
   { group: "Funnels", items: [
-    ["Locations",         "1",        "Up to 5",           "Unlimited"],
-    ["QR codes",          "1 static", "Unlimited dynamic", "Unlimited dynamic + printed kit"],
-    ["Active campaigns",  "1",        "10",                "Unlimited"],
-    ["Branded domain",    false,      true,                true],
+    ["Locations",         "1",        "1",                 "Up to 5",           "Unlimited"         ],
+    ["QR codes",          "1 static", "Unlimited dynamic", "Unlimited dynamic", "Unlimited dynamic" ],
+    ["Active campaigns",  "1",        "3",                 "5",                 "Unlimited"         ],
+    ["Branded domain",    false,      true,                true,                true                ],
   ]},
   { group: "AI", items: [
-    ["Reviews per month",    "30",      "Unlimited",         "Unlimited"],
-    ["AI suggestion model",  "GPT-3.5", "GPT-4",            "GPT-4 + tone training"],
-    ["Languages",            "1",       "8",                 "24"],
-    ["Custom voice training",false,     false,               true],
+    ["Reviews per month",    "20",      "200",      "500",       "Unlimited"           ],
+    ["AI suggestion model",  "GPT-3.5", "GPT-3.5", "GPT-4",     "GPT-4 + tone training"],
+    ["Languages",            "1",       "4",        "8",         "24"                  ],
+    ["Auto-reply to reviews",false,     false,      true,        true                  ],
   ]},
   { group: "Analytics", items: [
-    ["Real-time dashboards",  true,     true,                true],
-    ["Funnel breakdown",      "Basic",  "Advanced",          "Advanced + cohorts"],
-    ["Device & geo analytics",false,    true,                true],
-    ["Export to CSV / API",   false,    true,                true],
+    ["Real-time dashboards",  true,    true,       true,        true              ],
+    ["Funnel breakdown",      "Basic", "Standard", "Advanced",  "Advanced + cohorts"],
+    ["Device & geo analytics",false,   false,      true,        true              ],
+    ["Export to CSV / API",   false,   false,      true,        true              ],
   ]},
   { group: "Workspace", items: [
-    ["Team seats",            "1",      "5",                 "Unlimited"],
-    ["Role-based access",     false,    false,               true],
-    ["SSO (Google, SAML)",    false,    false,               true],
-    ["Audit log",             false,    false,               true],
+    ["Team seats",         "1",   "1",   "5",   "Unlimited"],
+    ["Role-based access",  false, false, false, true       ],
+    ["SSO (Google, SAML)", false, false, false, true       ],
+    ["Audit log",          false, false, false, true       ],
   ]},
   { group: "Support", items: [
-    ["Email support",         true,     true,                true],
-    ["Priority support",      false,    true,                true],
-    ["Dedicated CSM",         false,    false,               true],
-    ["Onboarding session",    false,    "30 min",            "2 hours"],
+    ["Email support",      true,  true,  true,      true         ],
+    ["Priority support",   false, false, true,      true         ],
+    ["Dedicated CSM",      false, false, false,     true         ],
+    ["Onboarding session", false, false, "30 min",  "2 hours"    ],
   ]},
 ];
 
 /* ── Pricing FAQ ── */
 const PRICING_FAQS = [
-  { q: "Is there really a free plan?", a: "Yes — Starter is free forever, no card. Up to 30 AI-generated reviews per month and one static QR. Perfect for small shops or to evaluate the platform." },
+  { q: "Is there really a free plan?", a: "Yes — Free gives you a full 14-day trial with no credit card required. After the trial, you keep 1 location, 20 AI-drafted reviews per month, and one QR code forever." },
   { q: "Can I switch between plans?", a: "Yes. Upgrade or downgrade any time from the billing page. Upgrades are prorated; downgrades take effect at the next billing cycle." },
-  { q: "Do you charge per location?", a: "No per-location fees on Growth and Business. Growth includes up to 5 locations; Business is unlimited." },
-  { q: "What happens if I exceed limits on the free plan?", a: "The funnel keeps working — but new AI suggestions pause once you hit 30 in a month. Reviews already in flight always complete." },
+  { q: "Do you charge per location?", a: "No per-location fees on Growth and Enterprise. Growth includes up to 5 locations; Enterprise is unlimited." },
+  { q: "What happens if I exceed limits on the free plan?", a: "The funnel keeps working — but new AI suggestions pause once you hit 20 in a month. Reviews already in flight always complete." },
   { q: "Can I get an invoice?", a: "Yes. Every charge generates a downloadable PDF invoice with VAT, business name, and tax ID fields editable in billing." },
-  { q: "Do you offer non-profit or education discounts?", a: "Yes — 50% off Growth and Business for verified non-profits and educational institutions. Contact sales to apply." },
+  { q: "Do you offer non-profit or education discounts?", a: "Yes — 50% off Starter, Growth, and Enterprise for verified non-profits and educational institutions. Contact sales to apply." },
 ];
 
 function FAQItem({ q, a, defaultOpen = false }: { q: string; a: string; defaultOpen?: boolean }) {
@@ -161,27 +182,27 @@ function CompValue({ v }: { v: boolean | string }) {
 export default function PricingPageClient({ plans }: { plans: PlanApiRow[] }) {
   const [yearly, setYearly] = useState(true);
 
-  // Build a lookup map by plan ID
   const planMap = Object.fromEntries(plans.map(p => [p.plan, p]));
 
-  // Resolve the 3 marketing plans from DB data, falling back to sensible defaults
   const marketingPlans = MARKETING_PLAN_IDS.map(id => {
     const db = planMap[id];
     const meta = PLAN_META[id];
+    const monthly = db ? db.amount_cents / 100 : 0;
+    const yearlyTotal = db?.amount_cents_yearly != null ? db.amount_cents_yearly / 100 : null;
     return {
       id,
-      name:      meta?.displayName ?? id,
-      sub:       meta?.sub ?? "",
-      cta:       meta?.cta ?? "Get started",
-      monthly:   db ? db.amount_cents / 100 : 0,
-      yearly:    db ? Math.round((db.amount_cents / 100) * 0.8) : 0,
-      popular:   db?.is_popular ?? false,
-      features:  PLAN_FEATURES[id] ?? [],
+      name:         meta?.displayName ?? id,
+      sub:          meta?.sub ?? "",
+      cta:          meta?.cta ?? "Get started",
+      monthly,
+      yearly:       yearlyTotal,
+      yearlySaving: yearlyTotal != null ? Math.round(monthly * 12 - yearlyTotal) : 0,
+      popular:      db?.is_popular ?? false,
+      features:     PLAN_FEATURES[id] ?? [],
     };
   });
 
-  // Comparison header prices (yearly selected by default)
-  const headerPrices = marketingPlans.map(p => yearly ? p.yearly : p.monthly);
+  const headerPrices = marketingPlans.map(p => (yearly && p.yearly !== null) ? p.yearly : p.monthly);
 
   return (
     <>
@@ -209,14 +230,15 @@ export default function PricingPageClient({ plans }: { plans: PlanApiRow[] }) {
               <div className="tabs">
                 <button className={!yearly ? "on" : ""} onClick={() => setYearly(false)}>Monthly</button>
                 <button className={yearly ? "on" : ""} onClick={() => setYearly(true)}>
-                  Yearly <span className="chip accent" style={{ marginLeft: 6, fontSize: 10, padding: "2px 8px" }}>Save 20%</span>
+                  Yearly <span className="chip accent" style={{ marginLeft: 6, fontSize: 10, padding: "2px 8px" }}>Save up to 17%</span>
                 </button>
               </div>
 
               {/* Cards */}
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 18, width: "100%" }} className="pricing-grid">
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 18, width: "100%" }} className="pricing-grid">
                 {marketingPlans.map((plan) => {
-                  const price = yearly ? plan.yearly : plan.monthly;
+                  const showYearly = yearly && plan.yearly !== null;
+                  const price = showYearly ? plan.yearly : plan.monthly;
                   return (
                     <div key={plan.id} className="card lift" style={{
                       padding: 28,
@@ -234,10 +256,16 @@ export default function PricingPageClient({ plans }: { plans: PlanApiRow[] }) {
                         <div style={{ fontSize: 13, color: "var(--muted)", fontFamily: "var(--font-mono)", letterSpacing: "0.04em" }}>{plan.name.toUpperCase()}</div>
                         <div style={{ marginTop: 12, display: "flex", alignItems: "baseline", gap: 6 }}>
                           <span style={{ fontSize: 44, fontWeight: 600, letterSpacing: "-0.03em" }}>${price}</span>
-                          <span style={{ color: "var(--muted)", fontSize: 14 }}>/ mo</span>
+                          <span style={{ color: "var(--muted)", fontSize: 14 }}>{showYearly ? "/ yr" : "/ mo"}</span>
                         </div>
-                        {yearly && plan.monthly > 0 && (
-                          <div style={{ marginTop: 2, fontSize: 12, color: "var(--muted)" }}>${plan.monthly}/mo billed monthly</div>
+                        {showYearly && plan.yearlySaving > 0 && (
+                          <div style={{ marginTop: 4, display: "flex", alignItems: "center", gap: 6 }}>
+                            <span className="chip accent" style={{ fontSize: 11, padding: "2px 8px" }}>Save ${plan.yearlySaving}/yr</span>
+                            <span style={{ fontSize: 12, color: "var(--muted)" }}>vs monthly</span>
+                          </div>
+                        )}
+                        {plan.monthly === 0 && (
+                          <div style={{ marginTop: 4, fontSize: 12, color: "var(--muted)" }}>No credit card required</div>
                         )}
                       </div>
                       <p style={{ fontSize: 13, color: "var(--muted)", marginTop: 14, marginBottom: 20, lineHeight: 1.5 }}>{plan.sub}</p>
@@ -277,14 +305,16 @@ export default function PricingPageClient({ plans }: { plans: PlanApiRow[] }) {
               <h2 className="h2" style={{ marginTop: 18 }}>Full feature comparison.</h2>
             </div>
             <div className="comparison-scroll">
-            <div className="card" style={{ padding: 0, overflow: "hidden", minWidth: 540 }}>
-              <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr", padding: "20px 24px", background: "var(--surface)", borderBottom: "1px solid var(--border)", position: "sticky", top: 60, zIndex: 5 }}>
+            <div className="card" style={{ padding: 0, overflow: "hidden", minWidth: 640 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr 1fr", padding: "20px 24px", background: "var(--surface)", borderBottom: "1px solid var(--border)", position: "sticky", top: 60, zIndex: 5 }}>
                 <div style={{ fontSize: 13, color: "var(--muted)", fontFamily: "var(--font-mono)", letterSpacing: "0.05em" }}>FEATURE</div>
                 {marketingPlans.map((p, i) => (
                   <div key={p.id}>
                     <div style={{ fontWeight: 600, fontSize: 15, color: p.popular ? "var(--accent)" : "var(--ink)" }}>{p.name}</div>
                     <div style={{ fontSize: 12, color: "var(--muted)" }}>
-                      {headerPrices[i] === 0 ? "Free" : `$${headerPrices[i]}/mo`}
+                      {headerPrices[i] === 0
+                        ? "Free"
+                        : `$${headerPrices[i]}${(yearly && marketingPlans[i].yearly !== null) ? "/yr" : "/mo"}`}
                     </div>
                   </div>
                 ))}
@@ -295,7 +325,7 @@ export default function PricingPageClient({ plans }: { plans: PlanApiRow[] }) {
                     {g.group.toUpperCase()}
                   </div>
                   {g.items.map(([label, ...vals], i) => (
-                    <div key={i} style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr", padding: "14px 24px", borderBottom: i === g.items.length - 1 ? "none" : "1px solid var(--border)", alignItems: "center" }}>
+                    <div key={i} style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr 1fr", padding: "14px 24px", borderBottom: i === g.items.length - 1 ? "none" : "1px solid var(--border)", alignItems: "center" }}>
                       <div style={{ fontSize: 14, color: "var(--ink-2)" }}>{label as string}</div>
                       {(vals as (boolean | string)[]).map((v, j) => (
                         <div key={j}><CompValue v={v} /></div>
@@ -369,7 +399,8 @@ export default function PricingPageClient({ plans }: { plans: PlanApiRow[] }) {
       <Footer />
 
       <style>{`
-        @media (max-width: 1000px) { .pricing-grid { grid-template-columns: 1fr !important; } }
+        @media (max-width: 1200px) { .pricing-grid { grid-template-columns: repeat(2, 1fr) !important; } }
+        @media (max-width: 700px)  { .pricing-grid { grid-template-columns: 1fr !important; } }
         @media (max-width: 900px)  { .ent-grid { grid-template-columns: 1fr !important; } }
         @media (max-width: 640px) {
           .cta-pricing-banner { padding: 40px 24px !important; }
@@ -409,7 +440,7 @@ function CTABanner() {
           <em style={{ background: "linear-gradient(110deg, #C8C1FF, #8FC2FF)", WebkitBackgroundClip: "text", backgroundClip: "text", color: "transparent" }}>today.</em>
         </h2>
         <p style={{ fontSize: 18, color: "rgba(255,255,255,0.7)", marginTop: 18, maxWidth: 540, lineHeight: 1.55 }}>
-          Print one QR code, start collecting authentic reviews tonight. Cancel anytime.
+          Set up one QR code, start collecting authentic reviews tonight. Cancel anytime.
         </p>
         <div className="cta-btns" style={{ display: "flex", marginTop: 28, gap: 12 }}>
           <Link href="/signup" className="btn btn-lg" style={{ background: "white", color: "#0A0A14", borderColor: "white" }}>

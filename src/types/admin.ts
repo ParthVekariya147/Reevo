@@ -12,7 +12,7 @@ export interface AdminUser {
 
 // ── Plan ────────────────────────────────────────────────────
 
-export type Plan = 'free' | 'starter' | 'pro' | 'enterprise';
+export type Plan = 'free' | 'starter' | 'pro' | 'growth' | 'enterprise';
 export type SubStatus = 'active' | 'canceled' | 'past_due' | 'trialing';
 export type QRStatus = 'draft' | 'live' | 'paused';
 export type InvoiceStatus = 'paid' | 'open' | 'void' | 'uncollectible';

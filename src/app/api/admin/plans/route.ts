@@ -12,7 +12,7 @@ export async function GET() {
 
   const [pricesRes, countsRes] = await Promise.all([
     db.from('plan_prices')
-      .select('plan, amount_cents, currency, label, trial_days, review_limit, scan_limit, campaign_limit, is_popular, updated_at')
+      .select('plan, amount_cents, amount_cents_yearly, currency, label, trial_days, review_limit, scan_limit, campaign_limit, location_limit, auto_reply, is_popular, updated_at')
       .order('amount_cents'),
     // DB-side GROUP BY instead of fetching all businesses into Node
     db.rpc('admin_business_plan_counts'),
@@ -35,7 +35,7 @@ export async function GET() {
   return NextResponse.json({ data });
 }
 
-const VALID_PLANS = ['free', 'starter', 'pro', 'enterprise'];
+const VALID_PLANS = ['free', 'starter', 'pro', 'growth', 'enterprise'];
 
 export async function PATCH(request: NextRequest) {
   const result = await requireAdmin();
@@ -47,7 +47,7 @@ export async function PATCH(request: NextRequest) {
   }
 
   const body = await request.json().catch(() => ({}));
-  const { plan, amount_cents, trial_days, review_limit, scan_limit, campaign_limit, is_popular } = body;
+  const { plan, amount_cents, amount_cents_yearly, trial_days, review_limit, scan_limit, campaign_limit, location_limit, auto_reply, is_popular } = body;
 
   if (!plan || !VALID_PLANS.includes(plan)) {
     return NextResponse.json({ error: `plan must be one of: ${VALID_PLANS.join(', ')}` }, { status: 400 });
@@ -62,6 +62,13 @@ export async function PATCH(request: NextRequest) {
     patch.amount_cents = amount_cents;
   }
 
+  if (amount_cents_yearly !== undefined) {
+    if (amount_cents_yearly !== null && (typeof amount_cents_yearly !== 'number' || !Number.isInteger(amount_cents_yearly) || amount_cents_yearly < 0)) {
+      return NextResponse.json({ error: 'amount_cents_yearly must be a non-negative integer or null' }, { status: 400 });
+    }
+    patch.amount_cents_yearly = amount_cents_yearly;
+  }
+
   if (trial_days !== undefined) {
     if (trial_days !== null && (typeof trial_days !== 'number' || !Number.isInteger(trial_days) || trial_days < 1)) {
       return NextResponse.json({ error: 'trial_days must be a positive integer or null' }, { status: 400 });
@@ -69,13 +76,20 @@ export async function PATCH(request: NextRequest) {
     patch.trial_days = trial_days;
   }
 
-  for (const [key, val] of [['review_limit', review_limit], ['scan_limit', scan_limit], ['campaign_limit', campaign_limit]] as const) {
+  for (const [key, val] of [['review_limit', review_limit], ['scan_limit', scan_limit], ['campaign_limit', campaign_limit], ['location_limit', location_limit]] as const) {
     if (val !== undefined) {
       if (typeof val !== 'number' || !Number.isInteger(val) || (val < -1)) {
         return NextResponse.json({ error: `${key} must be -1 (unlimited) or a positive integer` }, { status: 400 });
       }
       patch[key] = val;
     }
+  }
+
+  if (auto_reply !== undefined) {
+    if (typeof auto_reply !== 'boolean') {
+      return NextResponse.json({ error: 'auto_reply must be a boolean' }, { status: 400 });
+    }
+    patch.auto_reply = auto_reply;
   }
 
   if (is_popular !== undefined) {

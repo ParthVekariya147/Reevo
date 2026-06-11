@@ -21,45 +21,65 @@ const ArrowIcon = () => (
 );
 
 const PLAN_META: Record<string, { displayName: string; sub: string; cta: string }> = {
-  free:       { displayName: "Starter",  sub: "For trying Reevo with one location.",                     cta: "Start free"         },
-  pro:        { displayName: "Growth",   sub: "For single-location businesses serious about reviews.",   cta: "Start 14-day trial" },
-  enterprise: { displayName: "Business", sub: "For multi-location and franchise teams.",                 cta: "Start 14-day trial" },
+  free:       { displayName: "Free",       sub: "Try Reevo free for 14 days. No credit card required.",  cta: "Start free trial"  },
+  starter:    { displayName: "Starter",    sub: "For single-location businesses serious about reviews.", cta: "Get started"       },
+  growth:     { displayName: "Growth",     sub: "Best for growing cafes with 2–5 locations.",            cta: "Get started"       },
+  enterprise: { displayName: "Enterprise", sub: "For franchises and multi-location chains.",              cta: "Get started"       },
 };
 
 const PLAN_FEATURES: Record<string, [string, boolean][]> = {
   free: [
-    ["1 location",              true ],
-    ["Up to 30 reviews / month",true ],
-    ["1 static QR code",        true ],
-    ["Basic AI suggestions",    true ],
-    ["Standard analytics",      true ],
-    ["Custom branding",         false],
-    ["Multi-location",          false],
-    ["Priority support",        false],
+    ["1 location",                     true ],
+    ["20 reviews / month",             true ],
+    ["20 scans / month",               true ],
+    ["1 QR code",                      true ],
+    ["Basic AI review suggestions",    true ],
+    ["Standard analytics",             true ],
+    ["14-day full access, no card",    true ],
+    ["Auto-reply to reviews",          false],
+    ["Custom branding",                false],
+    ["Multi-location",                 false],
+    ["Priority support",               false],
   ],
-  pro: [
-    ["Up to 5 locations",          true ],
-    ["Unlimited reviews",          true ],
-    ["Dynamic QR codes",           true ],
-    ["GPT-4 review suggestions",   true ],
-    ["Advanced funnel analytics",  true ],
-    ["Custom branding & domain",   true ],
-    ["Multi-staff accounts",       true ],
-    ["Priority support",           false],
+  starter: [
+    ["1 location",                     true ],
+    ["200 reviews / month",            true ],
+    ["200 scans / month",              true ],
+    ["Dynamic QR codes",               true ],
+    ["AI review suggestions",          true ],
+    ["Standard analytics",             true ],
+    ["Custom branding",                true ],
+    ["Auto-reply to reviews",          false],
+    ["Multi-location",                 false],
+    ["Priority support",               false],
+  ],
+  growth: [
+    ["Up to 5 locations",              true ],
+    ["500 reviews / month",            true ],
+    ["500 scans / month",              true ],
+    ["Dynamic QR codes",               true ],
+    ["GPT-4 review suggestions",       true ],
+    ["Advanced funnel analytics",      true ],
+    ["Custom branding & domain",       true ],
+    ["Auto-reply to reviews",          true ],
+    ["Multi-staff accounts",           true ],
+    ["Priority support",               false],
   ],
   enterprise: [
-    ["Unlimited locations",        true],
-    ["Unlimited reviews",          true],
-    ["Dynamic + printed QR kit",   true],
-    ["AI suggestions + tone tuning",true],
-    ["Cohort & device analytics",  true],
-    ["Custom branding & domain",   true],
-    ["SSO + role-based access",    true],
-    ["Priority + dedicated CSM",   true],
+    ["Unlimited locations",            true ],
+    ["Unlimited reviews",              true ],
+    ["Unlimited scans",                true ],
+    ["Dynamic QR codes",               true ],
+    ["AI suggestions + tone tuning",   true ],
+    ["Cohort & device analytics",      true ],
+    ["Custom branding & domain",       true ],
+    ["Auto-reply to reviews",          true ],
+    ["SSO + role-based access",        true ],
+    ["Priority + dedicated CSM",       true ],
   ],
 };
 
-const MARKETING_PLAN_IDS = ["free", "pro", "enterprise"];
+const MARKETING_PLAN_IDS = ["free", "starter", "growth", "enterprise"];
 
 export default function PricingPreviewClient({ plans }: { plans: PlanApiRow[] }) {
   const [yearly, setYearly] = useState(true);
@@ -69,15 +89,18 @@ export default function PricingPreviewClient({ plans }: { plans: PlanApiRow[] })
   const marketingPlans = MARKETING_PLAN_IDS.map(id => {
     const db = planMap[id];
     const meta = PLAN_META[id];
+    const monthly = db ? db.amount_cents / 100 : 0;
+    const yearlyTotal = db?.amount_cents_yearly != null ? db.amount_cents_yearly / 100 : null;
     return {
       id,
-      name:    meta?.displayName ?? id,
-      sub:     meta?.sub ?? "",
-      cta:     meta?.cta ?? "Get started",
-      monthly: db ? db.amount_cents / 100 : 0,
-      yearly:  db ? Math.round((db.amount_cents / 100) * 0.8) : 0,
-      popular: db?.is_popular ?? false,
-      features:PLAN_FEATURES[id] ?? [],
+      name:         meta?.displayName ?? id,
+      sub:          meta?.sub ?? "",
+      cta:          meta?.cta ?? "Get started",
+      monthly,
+      yearly:       yearlyTotal,
+      yearlySaving: yearlyTotal != null ? Math.round(monthly * 12 - yearlyTotal) : 0,
+      popular:      db?.is_popular ?? false,
+      features:     PLAN_FEATURES[id] ?? [],
     };
   });
 
@@ -96,13 +119,14 @@ export default function PricingPreviewClient({ plans }: { plans: PlanApiRow[] })
           <div className="tabs">
             <button className={!yearly ? "on" : ""} onClick={() => setYearly(false)}>Monthly</button>
             <button className={yearly ? "on" : ""} onClick={() => setYearly(true)}>
-              Yearly <span className="chip accent" style={{ marginLeft: 6, fontSize: 10, padding: "2px 8px" }}>Save 20%</span>
+              Yearly <span className="chip accent" style={{ marginLeft: 6, fontSize: 10, padding: "2px 8px" }}>Save up to 17%</span>
             </button>
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 18, width: "100%" }} className="pricing-grid">
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 18, width: "100%" }} className="pricing-grid">
             {marketingPlans.map((plan) => {
-              const price = yearly ? plan.yearly : plan.monthly;
+              const showYearly = yearly && plan.yearly !== null;
+              const price = showYearly ? plan.yearly : plan.monthly;
               return (
                 <div
                   key={plan.id}
@@ -128,10 +152,16 @@ export default function PricingPreviewClient({ plans }: { plans: PlanApiRow[] })
                     <div style={{ fontSize: 13, color: "var(--muted)", fontFamily: "var(--font-mono)", letterSpacing: "0.04em" }}>{plan.name.toUpperCase()}</div>
                     <div style={{ marginTop: 12, display: "flex", alignItems: "baseline", gap: 6 }}>
                       <span style={{ fontSize: 44, fontWeight: 600, letterSpacing: "-0.03em" }}>${price}</span>
-                      <span style={{ color: "var(--muted)", fontSize: 14 }}>/ mo</span>
+                      <span style={{ color: "var(--muted)", fontSize: 14 }}>{showYearly ? "/ yr" : "/ mo"}</span>
                     </div>
-                    {yearly && plan.monthly > 0 && (
-                      <div style={{ marginTop: 2, fontSize: 12, color: "var(--muted)" }}>${plan.monthly}/mo billed monthly</div>
+                    {showYearly && plan.yearlySaving > 0 && (
+                      <div style={{ marginTop: 4, display: "flex", alignItems: "center", gap: 6 }}>
+                        <span className="chip accent" style={{ fontSize: 11, padding: "2px 8px" }}>Save ${plan.yearlySaving}/yr</span>
+                        <span style={{ fontSize: 12, color: "var(--muted)" }}>vs monthly</span>
+                      </div>
+                    )}
+                    {plan.monthly === 0 && (
+                      <div style={{ marginTop: 4, fontSize: 12, color: "var(--muted)" }}>No credit card required</div>
                     )}
                   </div>
                   <p style={{ fontSize: 13, color: "var(--muted)", marginTop: 14, marginBottom: 20, lineHeight: 1.5 }}>{plan.sub}</p>
@@ -167,7 +197,10 @@ export default function PricingPreviewClient({ plans }: { plans: PlanApiRow[] })
           </Link>
         </div>
 
-        <style>{`@media (max-width: 1000px) { .pricing-grid { grid-template-columns: 1fr !important; } }`}</style>
+        <style>{`
+          @media (max-width: 1200px) { .pricing-grid { grid-template-columns: repeat(2, 1fr) !important; } }
+          @media (max-width: 700px)  { .pricing-grid { grid-template-columns: 1fr !important; } }
+        `}</style>
       </div>
     </section>
   );

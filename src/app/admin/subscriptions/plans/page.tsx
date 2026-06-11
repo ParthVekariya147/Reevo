@@ -9,12 +9,15 @@ import type { Plan } from '@/types/admin';
 interface PlanRow {
   plan: Plan;
   amount_cents: number;
+  amount_cents_yearly: number | null;
   currency: string;
   label: string;
   trial_days: number | null;
   review_limit: number;
   scan_limit: number;
   campaign_limit: number;
+  location_limit: number;
+  auto_reply: boolean;
   is_popular: boolean;
   updated_at: string;
   business_count: number;
@@ -24,21 +27,24 @@ interface PlanRow {
 // Marketing feature bullets shown on /pricing — displayed here so admin can
 // see what features each plan advertises without leaving the config page.
 const PLAN_FEATURES: Record<string, string[]> = {
-  free:       ['1 location', 'Up to 30 reviews / month', '1 static QR code', 'Basic AI suggestions', 'Standard analytics'],
-  starter:    ['Up to 2 locations', 'Up to 500 reviews / month', 'Dynamic QR codes', 'Standard AI suggestions', 'Advanced analytics'],
-  pro:        ['Up to 5 locations', 'Unlimited reviews', 'Dynamic QR codes', 'GPT-4 review suggestions', 'Advanced funnel analytics', 'Custom branding & domain', 'Multi-staff accounts'],
-  enterprise: ['Unlimited locations', 'Unlimited reviews', 'Dynamic + printed QR kit', 'AI suggestions + tone tuning', 'Cohort & device analytics', 'Custom branding & domain', 'SSO + role-based access', 'Priority + dedicated CSM'],
+  free:       ['1 location', '20 reviews / month', '20 scans / month', '1 QR code', 'Basic AI review suggestions', 'Standard analytics', '14-day full access, no card'],
+  starter:    ['1 location', '200 reviews / month', '200 scans / month', 'Dynamic QR codes', 'AI review suggestions', 'Standard analytics', 'Custom branding'],
+  growth:     ['Up to 5 locations', '500 reviews / month', '500 scans / month', 'Dynamic QR codes', 'GPT-4 review suggestions', 'Advanced funnel analytics', 'Custom branding & domain', 'Auto-reply to reviews', 'Multi-staff accounts'],
+  enterprise: ['Unlimited locations', 'Unlimited reviews', 'Unlimited scans', 'Dynamic QR codes', 'AI suggestions + tone tuning', 'Cohort & device analytics', 'Custom branding & domain', 'Auto-reply to reviews', 'SSO + role-based access', 'Priority + dedicated CSM'],
 };
 
 interface DraftLimits {
   amount_cents: string;
+  amount_cents_yearly: string;
   trial_days: string;
   review_limit: string;
   scan_limit: string;
   campaign_limit: string;
+  location_limit: string;
+  auto_reply: boolean;
 }
 
-type DraftErrors = Partial<Record<keyof DraftLimits, string>>;
+type DraftErrors = Partial<Record<Exclude<keyof DraftLimits, 'auto_reply'>, string>>;
 
 function validateDraft(draft: DraftLimits): DraftErrors {
   const errors: DraftErrors = {};
@@ -46,12 +52,17 @@ function validateDraft(draft: DraftLimits): DraftErrors {
   if (draft.amount_cents.trim() === '' || isNaN(price) || price < 0) {
     errors.amount_cents = 'Price must be 0 or greater';
   }
+  const yearly = draft.amount_cents_yearly.trim();
+  if (yearly !== '') {
+    const y = parseFloat(yearly);
+    if (isNaN(y) || y < 0) errors.amount_cents_yearly = 'Must be 0 or greater (or leave blank for no yearly option)';
+  }
   const td = draft.trial_days.trim();
   if (td !== '') {
     const n = parseInt(td, 10);
     if (isNaN(n) || n < 1) errors.trial_days = 'Must be a positive number (or leave blank)';
   }
-  for (const key of ['review_limit', 'scan_limit', 'campaign_limit'] as const) {
+  for (const key of ['review_limit', 'scan_limit', 'campaign_limit', 'location_limit'] as const) {
     const v = parseInt(draft[key], 10);
     if (isNaN(v) || (v !== -1 && v < 1)) errors[key] = 'Must be −1 (unlimited) or ≥ 1';
   }
@@ -68,13 +79,13 @@ function fmtLimit(val: number) {
   return val === -1 ? 'Unlimited' : val.toLocaleString();
 }
 
-const PLAN_ORDER: Plan[] = ['free', 'starter', 'pro', 'enterprise'];
+const PLAN_ORDER: Plan[] = ['free', 'starter', 'growth', 'enterprise'];
 
 export default function PlansPage() {
   const [plans, setPlans] = useState<PlanRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<Plan | null>(null);
-  const [draft, setDraft] = useState<DraftLimits>({ amount_cents: '', trial_days: '', review_limit: '', scan_limit: '', campaign_limit: '' });
+  const [draft, setDraft] = useState<DraftLimits>({ amount_cents: '', amount_cents_yearly: '', trial_days: '', review_limit: '', scan_limit: '', campaign_limit: '', location_limit: '', auto_reply: false });
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
   const [draftErrors, setDraftErrors] = useState<DraftErrors>({});
@@ -94,11 +105,14 @@ export default function PlansPage() {
 
   function startEdit(plan: PlanRow) {
     const initial: DraftLimits = {
-      amount_cents:   (plan.amount_cents / 100).toFixed(2),
-      trial_days:     plan.trial_days != null ? String(plan.trial_days) : '',
-      review_limit:   String(plan.review_limit),
-      scan_limit:     String(plan.scan_limit),
-      campaign_limit: String(plan.campaign_limit),
+      amount_cents:        (plan.amount_cents / 100).toFixed(2),
+      amount_cents_yearly: plan.amount_cents_yearly != null ? (plan.amount_cents_yearly / 100).toFixed(2) : '',
+      trial_days:          plan.trial_days != null ? String(plan.trial_days) : '',
+      review_limit:        String(plan.review_limit),
+      scan_limit:          String(plan.scan_limit),
+      campaign_limit:      String(plan.campaign_limit),
+      location_limit:      String(plan.location_limit),
+      auto_reply:          plan.auto_reply,
     };
     setEditing(plan.plan);
     setDraft(initial);
@@ -106,7 +120,7 @@ export default function PlansPage() {
     setSaveError('');
   }
 
-  function handleDraftChange<K extends keyof DraftLimits>(key: K, value: string) {
+  function handleDraftChange<K extends keyof DraftLimits>(key: K, value: DraftLimits[K]) {
     const next = { ...draft, [key]: value };
     setDraft(next);
     setDraftErrors(validateDraft(next));
@@ -137,19 +151,23 @@ export default function PlansPage() {
       return;
     }
 
-    const amount_cents   = Math.round(parseFloat(draft.amount_cents) * 100);
-    const trial_days_raw = draft.trial_days.trim();
-    const trial_days     = trial_days_raw === '' ? null : parseInt(trial_days_raw, 10);
-    const review_limit   = parseInt(draft.review_limit, 10);
-    const scan_limit     = parseInt(draft.scan_limit, 10);
-    const campaign_limit = parseInt(draft.campaign_limit, 10);
+    const amount_cents        = Math.round(parseFloat(draft.amount_cents) * 100);
+    const yearly_raw          = draft.amount_cents_yearly.trim();
+    const amount_cents_yearly = yearly_raw === '' ? null : Math.round(parseFloat(yearly_raw) * 100);
+    const trial_days_raw      = draft.trial_days.trim();
+    const trial_days          = trial_days_raw === '' ? null : parseInt(trial_days_raw, 10);
+    const review_limit        = parseInt(draft.review_limit, 10);
+    const scan_limit          = parseInt(draft.scan_limit, 10);
+    const campaign_limit      = parseInt(draft.campaign_limit, 10);
+    const location_limit      = parseInt(draft.location_limit, 10);
+    const auto_reply          = draft.auto_reply;
 
     setSaving(true);
     setSaveError('');
     const res = await fetch('/api/admin/plans', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ plan, amount_cents, trial_days, review_limit, scan_limit, campaign_limit }),
+      body: JSON.stringify({ plan, amount_cents, amount_cents_yearly, trial_days, review_limit, scan_limit, campaign_limit, location_limit, auto_reply }),
     });
 
     if (res.ok) {
@@ -320,19 +338,21 @@ export default function PlansPage() {
 
                     {isEditing ? (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                        {[
-                          { key: 'trial_days' as const,     label: 'Trial days',     hint: 'blank = no expiry' },
-                          { key: 'review_limit' as const,   label: 'Reviews / mo',   hint: '-1 = unlimited' },
-                          { key: 'scan_limit' as const,     label: 'Scans / mo',     hint: '-1 = unlimited' },
-                          { key: 'campaign_limit' as const, label: 'Campaigns max',  hint: '-1 = unlimited' },
-                        ].map(({ key, label, hint }) => (
+                        {([
+                          { key: 'amount_cents_yearly' as const, label: 'Yearly price', hint: 'blank = no yearly option' },
+                          { key: 'trial_days' as const,          label: 'Trial days',   hint: 'blank = no trial' },
+                          { key: 'review_limit' as const,        label: 'Reviews / mo', hint: '-1 = unlimited' },
+                          { key: 'scan_limit' as const,          label: 'Scans / mo',   hint: '-1 = unlimited' },
+                          { key: 'campaign_limit' as const,      label: 'Campaigns',    hint: '-1 = unlimited' },
+                          { key: 'location_limit' as const,      label: 'Locations',    hint: '-1 = unlimited' },
+                        ] as const).map(({ key, label, hint }) => (
                           <div key={key}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                               <label style={{ fontSize: 11, color: 'var(--muted)', width: 96, flexShrink: 0 }}>{label}</label>
                               <input
                                 type="number"
-                                value={draft[key]}
-                                onChange={e => handleDraftChange(key, e.target.value)}
+                                value={draft[key] as string}
+                                onChange={e => handleDraftChange(key, e.target.value as DraftLimits[typeof key])}
                                 placeholder={hint}
                                 style={{
                                   flex: 1, padding: '5px 8px',
@@ -347,6 +367,16 @@ export default function PlansPage() {
                             {draftErrors[key] && <p style={{ fontSize: 11, color: '#DC2626', margin: '3px 0 0', paddingLeft: 104 }}>{draftErrors[key]}</p>}
                           </div>
                         ))}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <label style={{ fontSize: 11, color: 'var(--muted)', width: 96, flexShrink: 0 }}>Auto-reply</label>
+                          <input
+                            type="checkbox"
+                            checked={draft.auto_reply}
+                            onChange={e => handleDraftChange('auto_reply', e.target.checked)}
+                            style={{ width: 16, height: 16, cursor: 'pointer' }}
+                          />
+                          <span style={{ fontSize: 11, color: 'var(--muted)' }}>Enabled on this plan</span>
+                        </div>
 
                         {saveError && <p style={{ fontSize: 11, color: '#991B1B', margin: 0 }}>{saveError}</p>}
 
@@ -370,10 +400,13 @@ export default function PlansPage() {
                     ) : (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                         {[
-                          { label: 'Trial days',   value: plan.trial_days != null ? `${plan.trial_days} days` : 'No expiry' },
+                          { label: 'Yearly price', value: plan.amount_cents_yearly != null ? fmtMoney(plan.amount_cents_yearly, plan.currency) + '/yr' : 'No yearly option' },
+                          { label: 'Trial days',   value: plan.trial_days != null ? `${plan.trial_days} days` : 'No trial' },
                           { label: 'Reviews / mo', value: fmtLimit(plan.review_limit) },
                           { label: 'Scans / mo',   value: fmtLimit(plan.scan_limit) },
                           { label: 'Campaigns',    value: fmtLimit(plan.campaign_limit) },
+                          { label: 'Locations',    value: fmtLimit(plan.location_limit) },
+                          { label: 'Auto-reply',   value: plan.auto_reply ? 'Enabled' : 'Disabled' },
                         ].map(({ label, value }) => (
                           <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <span style={{ fontSize: 12, color: 'var(--muted)' }}>{label}</span>

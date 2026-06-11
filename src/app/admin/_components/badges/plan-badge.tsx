@@ -4,6 +4,7 @@ const STYLES: Record<Plan, { bg: string; color: string; label: string }> = {
   free:       { bg: 'var(--surface-2)',  color: 'var(--muted)',     label: 'Free'       },
   starter:    { bg: '#EFF6FF',           color: '#1D4ED8',          label: 'Starter'    },
   pro:        { bg: 'var(--accent-soft)',color: 'var(--accent-ink)',label: 'Pro'        },
+  growth:     { bg: '#F0FDF4',           color: '#15803D',          label: 'Growth'     },
   enterprise: { bg: 'transparent',       color: '#fff',             label: 'Enterprise' },
 };
 
