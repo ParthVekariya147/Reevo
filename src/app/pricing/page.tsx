@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
+import { createAdminClient } from '@/lib/supabase/admin';
 import PricingPageClient, { type PlanApiRow } from "./PricingPageClient";
+
+export const revalidate = 300;
 
 export const metadata: Metadata = {
   title: "Pricing",
@@ -7,19 +10,12 @@ export const metadata: Metadata = {
   alternates: { canonical: "/pricing" },
 };
 
-async function fetchPlans(): Promise<PlanApiRow[]> {
-  try {
-    const base = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-    const res = await fetch(`${base}/api/public/plans`, { next: { revalidate: 300 } });
-    if (!res.ok) return [];
-    const json = await res.json();
-    return json.plans ?? [];
-  } catch {
-    return [];
-  }
-}
-
 export default async function PricingPage() {
-  const plans = await fetchPlans();
+  const db = createAdminClient();
+  const { data } = await db
+    .from('plan_prices')
+    .select('plan, amount_cents, currency, label, trial_days, review_limit, scan_limit, campaign_limit, is_popular')
+    .order('amount_cents');
+  const plans = (data as PlanApiRow[]) ?? [];
   return <PricingPageClient plans={plans} />;
 }
